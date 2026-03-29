@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Little Sprouts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:     #F7F2EA;
+      --warm-dark: #3A2F24;
+      --warm-mid:  #8C7B6B;
+      --card-1:    #E8C9A8;
+      --card-2:    #B8D4B4;
+      --card-3:    #A8C4D8;
+      --accent-2:  #6A9E65;
+      --radius-xl: 40px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--cream);
+      font-family: 'Nunito', sans-serif;
+      color: var(--warm-dark);
+      overflow-x: hidden;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────────── */
+    #home {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 0 20px 40px;
+      animation: fadeIn 0.35s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+
+    /* ── HEADER ─────────────────────────────────────── */
+    .home-header {
+      width: 100%; max-width: 480px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 36px 0 8px;
+    }
+
+    .logo-wrap { display: flex; align-items: center; gap: 10px; }
+
+    .logo-leaf {
+      width: 46px; height: 46px;
+      background: var(--accent-2);
+      border-radius: 50% 14px 50% 14px;
+      display: grid; place-items: center;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(106,158,101,0.35);
+    }
+
+    .logo-text {
+      font-family: 'Fredoka One', cursive;
+      font-size: 26px; color: var(--warm-dark); letter-spacing: 0.5px;
+    }
+    .logo-text span { color: var(--accent-2); }
+
+    /* ── GREETING ───────────────────────────────────── */
+    .greeting {
+      width: 100%; max-width: 480px;
+      padding: 22px 0 28px;
+    }
+    .greeting h1 {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(28px, 7vw, 36px);
+      line-height: 1.2; color: var(--warm-dark);
+    }
+    .greeting p {
+      margin-top: 6px; font-size: 16px;
+      color: var(--warm-mid); font-weight: 600;
+    }
+
+    /* ── MODULE GRID ────────────────────────────────── */
+    .module-grid {
+      width: 100%; max-width: 480px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .module-card {
+      border-radius: var(--radius-xl);
+      padding: 26px 20px 22px;
+      display: flex; flex-direction: column;
+      align-items: flex-start; gap: 12px;
+      cursor: pointer; border: none; text-align: left;
+      position: relative; overflow: hidden;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      opacity: 0;
+      animation: cardIn 0.4s ease forwards;
+    }
+
+    .module-card:nth-child(1) { background: var(--card-1); animation-delay: 0.10s; }
+    .module-card:nth-child(2) { background: var(--card-2); animation-delay: 0.18s; }
+
+    /* Card 3 spans full width, horizontal layout */
+    .module-card:nth-child(3) {
+      background: var(--card-3);
+      grid-column: 1 / -1;
+      flex-direction: row;
+      align-items: center;
+      gap: 20px;
+      padding: 22px 28px;
+      animation-delay: 0.26s;
+    }
+    .module-card:nth-child(3) .card-icon { font-size: 52px; flex-shrink: 0; }
+    .module-card:nth-child(3) .card-title { font-size: 22px; }
+
+    .module-card:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    }
+
+    /* Decorative blob */
+    .module-card::after {
+      content: '';
+      position: absolute; right: -20px; bottom: -20px;
+      width: 90px; height: 90px;
+      border-radius: 50%; opacity: 0.18; background: #fff;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(22px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0)    scale(1);    }
+    }
+
+    .card-icon {
+      font-size: 44px; line-height: 1;
+      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.12));
+    }
+
+    .card-body { flex: 1; }
+
+    .card-num {
+      font-size: 11px; font-weight: 800;
+      letter-spacing: 1.4px; text-transform: uppercase;
+      opacity: 0.55; margin-bottom: 3px;
+    }
+    .card-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: 20px; line-height: 1.15; color: var(--warm-dark);
+    }
+    .card-desc {
+      margin-top: 4px; font-size: 13px;
+      font-weight: 600; color: var(--warm-dark); opacity: 0.65;
+    }
+
+    .card-progress { display: flex; gap: 5px; margin-top: 8px; }
+
+    .prog-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(58,47,36,0.2);
+    }
+    .prog-dot.filled { background: rgba(58,47,36,0.5); }
+
+    /* ── MODULE 4 COMING SOON ───────────────────────── */
+    .coming-soon-card {
+      width: 100%; max-width: 480px;
+      margin-top: 16px;
+      border-radius: var(--radius-xl);
+      padding: 18px 24px;
+      background: #fff;
+      border: 2.5px dashed #E8DDD0;
+      display: flex; align-items: center; gap: 16px;
+      opacity: 0;
+      animation: cardIn 0.4s 0.34s ease forwards;
+    }
+    .cs-icon { font-size: 38px; flex-shrink: 0; }
+    .cs-body  { flex: 1; }
+    .cs-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: 18px; color: var(--warm-mid);
+    }
+    .cs-desc {
+      font-size: 13px; font-weight: 600;
+      color: var(--warm-mid); opacity: 0.7; margin-top: 2px;
+    }
+    .cs-badge {
+      background: #F0DC98; border-radius: 50px;
+      padding: 4px 12px; font-size: 11px; font-weight: 800;
+      color: #8C7040; letter-spacing: 0.8px;
+      text-transform: uppercase; white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── FOOTER ─────────────────────────────────────── */
+    .home-footer {
+      width: 100%; max-width: 480px;
+      text-align: center; padding-top: 30px;
+      font-size: 13px; color: var(--warm-mid);
+      font-weight: 600; opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+
+<div id="home">
+
+  <div class="module-grid">
+
+    <!-- Module 1: Letters -->
+    <button class="module-card" onclick="go('letters.html')">
+      <div class="card-icon">🔤</div>
+      <div class="card-body">
+        <div class="card-num">1. modul</div>
+        <div class="card-title">Betűk<br>tanulása</div>
+        <div class="card-desc">Magyar ABC</div>
+        <div class="card-progress">
+          <div class="prog-dot filled"></div>
+          <div class="prog-dot filled"></div>
+          <div class="prog-dot filled"></div>
+        </div>
+      </div>
+    </button>
+
+    <!-- Module 2: Words -->
+    <button class="module-card" onclick="go('words.html')">
+      <div class="card-icon">📖</div>
+      <div class="card-body">
+        <div class="card-num">2. modul</div>
+        <div class="card-title">Szavak<br>építése</div>
+        <div class="card-desc">Rakd össze!</div>
+        <div class="card-progress">
+          <div class="prog-dot filled"></div>
+          <div class="prog-dot filled"></div>
+          <div class="prog-dot filled"></div>
+        </div>
+      </div>
+    </button>
+
+    <!-- Module 3: Numbers — full width -->
+    <button class="module-card" onclick="go('numbers.html')">
+      <div class="card-icon">🔢</div>
+      <div class="card-body">
+        <div class="card-num">3. modul</div>
+        <div class="card-title">Számok tanulása</div>
+        <div class="card-desc">1-től 10-ig · Számold meg!</div>
+        <div class="card-progress">
+          <div class="prog-dot filled"></div>
+          <div class="prog-dot filled"></div>
+          <div class="prog-dot filled"></div>
+        </div>
+      </div>
+    </button>
+
+  </div>
+
+<script>
+  // Navigate to a module HTML file
+  function go(filename) {
+    window.location.href = filename;
+  }
+
+  // Android hardware back button — on home screen let Android close the app
+  window.androidBridge = {
+    onBackPressed: function() {
+      return false;   // not consumed → Android calls finish()
+    }
+  };
+</script>
+
+</body>
+</html>
