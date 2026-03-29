@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Building Words · Little Sprouts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width:100%; height:100%; overflow:hidden; user-select:none; -webkit-user-select:none; font-family:'Nunito',sans-serif; background:#87CEEB; }
+
+    .screen { display:none; position:absolute; inset:0; flex-direction:column; }
+    .screen.active { display:flex; }
+
+    /* ══ SCENE ══════════════════════════════════════ */
+    #game-screen { overflow:hidden; }
+
+    #upper-field {
+      flex:1; position:relative;
+      background:linear-gradient(180deg,#6EC6F0 0%,#A8DCF5 28%,#7ED168 28%,#8EDA78 100%);
+      overflow:visible;
+    }
+
+    .wave-divider { position:relative; z-index:15; line-height:0; flex-shrink:0; }
+    .wave-divider svg { display:block; width:100%; }
+
+    #stream {
+      flex-shrink:0; height:72px; position:relative;
+      background:#3AADE0; overflow:hidden; z-index:12;
+    }
+    #stream::before,#stream::after { content:''; position:absolute; inset:0; }
+    #stream::before {
+      background:repeating-linear-gradient(90deg,transparent 0,transparent 55px,rgba(255,255,255,.18) 55px,rgba(255,255,255,.18) 80px);
+      animation:rip1 1.8s linear infinite;
+    }
+    #stream::after {
+      background:repeating-linear-gradient(90deg,transparent 0,transparent 35px,rgba(255,255,255,.10) 35px,rgba(255,255,255,.10) 50px);
+      animation:rip2 2.8s linear infinite;
+    }
+    @keyframes rip1 { to { background-position-x:-80px; } }
+    @keyframes rip2 { to { background-position-x: 50px; } }
+
+    .stream-creature { position:absolute; font-size:20px; top:50%; transform:translateY(-50%); pointer-events:none; z-index:16; }
+    @keyframes swimR { from{left:-8%}  to{left:110%} }
+    @keyframes swimL { from{left:110%;transform:translateY(-50%) scaleX(-1)} to{left:-8%;transform:translateY(-50%) scaleX(-1)} }
+
+    #lower-field {
+      flex-shrink:0; height:34vh; position:relative;
+      background:linear-gradient(180deg,#6BBF58 0%,#59AB46 100%);
+      overflow:visible;
+    }
+
+    /* ── Word display ──────────────────────────────── */
+    #word-display {
+      position:absolute; left:50%; top:46%;
+      transform:translate(-50%,-50%);
+      display:flex; flex-direction:column; align-items:center; gap:7px; z-index:5;
+    }
+
+    #word-emoji { font-size:38px; line-height:1; filter:drop-shadow(0 3px 6px rgba(0,0,0,.2)); animation:efloat 3s ease-in-out infinite; }
+    @keyframes efloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+    #word-slots { display:flex; gap:var(--slot-gap,5px); align-items:center; }
+
+    /* ── Slot states ───────────────────────────────── */
+    /* All three states share the same geometry — toggled by class */
+    .slot-base {
+      width:var(--slot-sz,50px); height:var(--slot-sz,50px);
+      border-radius:12px;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Fredoka One',cursive; font-size:var(--slot-fs,28px);
+    }
+
+    /* Future: very faint ghost letter */
+    .slot-future {
+      background:transparent;
+      border:3px dashed rgba(255,255,255,.28);
+      color:rgba(255,255,255,.22);
+    }
+
+    /* Active: slightly brighter ghost, pulsing border */
+    .slot-active {
+      background:transparent;
+      border:3px dashed rgba(255,255,255,.72);
+      color:rgba(255,255,255,.42);
+      animation:spulse 1.6s ease-in-out infinite;
+    }
+    @keyframes spulse {
+      0%,100%{ box-shadow:0 0 0 0 rgba(255,255,255,.5); transform:scale(1);    }
+      50%     { box-shadow:0 0 0 8px rgba(255,255,255,0); transform:scale(1.07); }
+    }
+
+    /* Filled: solid, popping */
+    .slot-filled {
+      background:rgba(255,255,255,.88);
+      border:2px solid rgba(255,255,255,.65);
+      color:#3A2F24;
+      box-shadow:0 3px 0 rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.1);
+    }
+    @keyframes spop {
+      0%  { transform:scale(1.45); }
+      60% { transform:scale(.9);   }
+      100%{ transform:scale(1);    }
+    }
+    .slot-filled.pop { animation:spop .35s cubic-bezier(.34,1.56,.64,1) both; }
+
+    /* ── Hint ──────────────────────────────────────── */
+    #word-hint {
+      position:absolute; bottom:9px; left:50%; transform:translateX(-50%);
+      font-family:'Fredoka One',cursive; font-size:13px;
+      color:rgba(255,255,255,.7); white-space:nowrap; pointer-events:none; z-index:5;
+    }
+
+    /* ── Tiles layer ───────────────────────────────── */
+    #tiles-layer { position:absolute; inset:0; pointer-events:none; z-index:50; }
+
+    .letter-tile {
+      position:absolute;
+      width:var(--tile-sz,72px); height:var(--tile-sz,72px);
+      background:#FFF8EE; border:3px solid #D9BC8E; border-radius:16px;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Fredoka One',cursive; font-size:var(--tile-fs,38px); color:#3A2F24;
+      cursor:grab; pointer-events:auto; touch-action:none;
+      box-shadow:0 5px 0 #C0A060,0 7px 16px rgba(0,0,0,.16);
+      transition:transform .1s ease,box-shadow .1s ease;
+    }
+    .letter-tile.grabbed {
+      cursor:grabbing; transform:scale(1.12) rotate(-4deg);
+      box-shadow:0 12px 0 #C0A060,0 18px 30px rgba(0,0,0,.22); z-index:200!important;
+    }
+    .letter-tile.used { opacity:.2; pointer-events:none; box-shadow:none; border-style:dashed; }
+
+    .deco { position:absolute; pointer-events:none; user-select:none; line-height:1; }
+
+    /* ── Badges ──────────────────────────────────────── */
+    #round-badge {
+      position:absolute; top:13px; right:13px;
+      background:rgba(255,255,255,.88); backdrop-filter:blur(4px);
+      border-radius:50px; padding:6px 14px;
+      font-size:13px; font-weight:800; color:#3A4A2A; z-index:30;
+    }
+    #back-btn {
+      position:absolute; top:13px; left:13px; width:44px; height:44px;
+      background:rgba(255,255,255,.88); backdrop-filter:blur(4px);
+      border:none; border-radius:50%; font-size:20px; cursor:pointer;
+      z-index:30; display:grid; place-items:center;
+      -webkit-tap-highlight-color:transparent; box-shadow:0 2px 8px rgba(0,0,0,.1);
+    }
+
+    /* ── Beetle ──────────────────────────────────────── */
+    #beetle { position:absolute; right:6%; top:50%; transform:translateY(-50%); font-size:58px; z-index:8; pointer-events:none; animation:bidle 3s ease-in-out infinite; transform-origin:center bottom; }
+    @keyframes bidle { 0%,100%{transform:translateY(-50%) rotate(-4deg) scale(1)} 50%{transform:translateY(-54%) rotate(4deg) scale(1.02)} }
+    #beetle.celebrate { animation:bcelebrate .6s ease infinite; }
+    @keyframes bcelebrate { 0%{transform:translateY(-50%) scale(1) rotate(0)} 20%{transform:translateY(-80%) scale(1.25) rotate(-12deg)} 40%{transform:translateY(-50%) scale(1.1) rotate(10deg)} 60%{transform:translateY(-72%) scale(1.2) rotate(-8deg)} 80%{transform:translateY(-50%) scale(1.05) rotate(6deg)} 100%{transform:translateY(-50%) scale(1) rotate(0)} }
+    #beetle.sad { animation:bsad .5s ease 3; }
+    @keyframes bsad { 0%{transform:translateY(-50%) rotate(0) scale(1)} 15%{transform:translateY(-44%) rotate(-14deg) scale(.92)} 35%{transform:translateY(-56%) rotate(10deg) scale(.95)} 55%{transform:translateY(-44%) rotate(-8deg) scale(.92)} 75%{transform:translateY(-50%) rotate(5deg) scale(.96)} 100%{transform:translateY(-50%) rotate(0) scale(1)} }
+
+    /* ── Success ──────────────────────────────────────── */
+    #success-overlay { display:none; position:absolute; inset:0; z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:16px; }
+    #success-overlay.show { display:flex; }
+    .success-ring {
+      background:rgba(255,255,255,.18); backdrop-filter:blur(6px);
+      border:2px solid rgba(255,255,255,.35); border-radius:32px;
+      padding:22px 36px; display:flex; flex-direction:column; align-items:center; gap:10px;
+      animation:popin .45s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes popin { from{transform:scale(.5) rotate(-5deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
+    .success-emojis { font-size:42px; letter-spacing:4px; animation:wig .6s ease-in-out infinite alternate; }
+    @keyframes wig { from{transform:rotate(-6deg) scale(1)} to{transform:rotate(6deg) scale(1.05)} }
+    .success-word-label { font-family:'Fredoka One',cursive; font-size:28px; color:#fff; letter-spacing:4px; text-shadow:0 2px 8px rgba(0,0,0,.2); animation:popin .4s .1s cubic-bezier(.34,1.56,.64,1) both; }
+    .next-btn { background:#5DC04D; color:#fff; border:none; border-radius:50px; padding:13px 32px; font-family:'Fredoka One',cursive; font-size:20px; cursor:pointer; box-shadow:0 5px 0 #3A9A2B,0 7px 18px rgba(93,192,77,.35); -webkit-tap-highlight-color:transparent; animation:popin .45s .22s cubic-bezier(.34,1.56,.64,1) both; }
+    .next-btn:active { transform:translateY(3px); box-shadow:0 2px 0 #3A9A2B; }
+
+    #confetti-canvas { position:fixed; inset:0; pointer-events:none; z-index:999; }
+
+    /* ══ STATS ════════════════════════════════════════ */
+    #stats-screen { background:#F7F2EA; align-items:center; padding:44px 22px 32px; overflow-y:auto; gap:0; }
+    .stats-hero  { font-size:56px; margin-bottom:6px; animation:popin .5s cubic-bezier(.34,1.56,.64,1) both; }
+    .stats-title { font-family:'Fredoka One',cursive; font-size:32px; color:#3A2F24; margin-bottom:4px; }
+    .stats-sub   { font-size:15px; font-weight:700; color:#8C7B6B; margin-bottom:22px; }
+    .stats-total { background:#FFD93D; border-radius:60px; padding:12px 28px; font-family:'Fredoka One',cursive; font-size:20px; color:#3A2F24; margin-bottom:20px; box-shadow:0 4px 12px rgba(255,217,61,.4),0 3px 0 #C8A820; }
+    .stats-list  { width:100%; max-width:380px; display:flex; flex-direction:column; gap:9px; margin-bottom:26px; }
+    .stat-row { background:#fff; border-radius:16px; padding:13px 18px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,.06); animation:slideIn .3s ease both; }
+    @keyframes slideIn { from{opacity:0;transform:translateX(-16px)} to{opacity:1;transform:translateX(0)} }
+    .stat-emoji { font-size:26px; width:34px; }
+    .stat-word  { font-family:'Fredoka One',cursive; font-size:20px; color:#3A2F24; flex:1; padding-left:6px; }
+    .stat-tries { font-size:12px; font-weight:700; color:#8C7B6B; min-width:78px; text-align:center; }
+    .stat-stars { font-size:16px; letter-spacing:1px; }
+    .play-again-btn { background:#6BBF59; color:#fff; border:none; border-radius:50px; padding:16px 40px; font-family:'Fredoka One',cursive; font-size:22px; cursor:pointer; box-shadow:0 5px 0 #4A9A38,0 7px 18px rgba(107,191,89,.35); -webkit-tap-highlight-color:transparent; }
+  </style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+
+<div id="game-screen" class="screen active">
+  <div id="upper-field">
+    <button id="back-btn" onclick="goBackHome()">←</button>
+    <div id="round-badge">Round <span id="round-num">1</span> / 10</div>
+  </div>
+  <div class="wave-divider" style="margin-bottom:-2px;z-index:14;">
+    <svg viewBox="0 0 360 22" preserveAspectRatio="none" height="22"><path d="M0,11 Q45,0 90,11 T180,11 T270,11 T360,11 L360,22 L0,22Z" fill="#3AADE0"/></svg>
+  </div>
+  <div id="stream"></div>
+  <div class="wave-divider" style="margin-top:-2px;z-index:14;">
+    <svg viewBox="0 0 360 22" preserveAspectRatio="none" height="22"><path d="M0,11 Q45,22 90,11 T180,11 T270,11 T360,11 L360,0 L0,0Z" fill="#6BBF58"/></svg>
+  </div>
+  <div id="lower-field">
+    <div id="word-display">
+      <div id="word-emoji">🍎</div>
+      <div id="word-slots"></div>
+    </div>
+    <div id="word-hint"></div>
+    <div id="beetle">🐞</div>
+    <div id="success-overlay">
+      <div class="success-ring">
+        <div class="success-emojis">🎉 ⭐ 🎉</div>
+        <div class="success-word-label" id="success-label"></div>
+        <button class="next-btn" onclick="nextRound()">Következő →</button>
+      </div>
+    </div>
+  </div>
+  <div id="tiles-layer"></div>
+</div>
+
+<div id="stats-screen" class="screen">
+  <div class="stats-hero">🏅</div>
+  <div class="stats-title">Kész!</div>
+  <div class="stats-sub">Így ment:</div>
+  <div class="stats-total" id="stats-total">⭐ 0 / 30 csillag</div>
+  <div class="stats-list" id="stats-list"></div>
+  <button class="play-again-btn" onclick="restartGame()">Újra! 🔄</button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   WORD POOL  [word, emoji]
+   ~1000 Hungarian words across many categories.
+   Distractors are generated dynamically from the HU alphabet.
+═══════════════════════════════════════════════════════════ */
+const HU_ALPHA = ['A','Á','B','C','D','E','É','F','G','H','I','Í','J','K','L','M','N','O','Ó','Ö','Ő','P','R','S','T','U','Ú','Ü','Ű','V','Z'];
+
+const WORD_POOL = [
+  // ── ÁLLATOK (Animals) ───────────────────────────────
+  ['KUTYA','🐕'],['MACSKA','🐱'],['LÓ','🐴'],['TEHÉN','🐄'],['DISZNÓ','🐷'],
+  ['BIRKA','🐑'],['KECSKE','🐐'],['CSIRKE','🐔'],['KACSA','🦆'],['LÚD','🪿'],
+  ['NYÚL','🐰'],['EGÉR','🐭'],['HAL','🐟'],['BÉKA','🐸'],['KÍGYÓ','🐍'],
+  ['TEKNŐS','🐢'],['GYÍK','🦎'],['VERÉB','🐦'],['GALAMB','🕊️'],['SAS','🦅'],
+  ['BAGOLY','🦉'],['PAPAGÁJ','🦜'],['PINGVIN','🐧'],['ELEFÁNT','🐘'],['OROSZLÁN','🦁'],
+  ['TIGRIS','🐯'],['ZEBRA','🦓'],['ZSIRÁF','🦒'],['MAJOM','🐒'],['MEDVE','🐻'],
+  ['FARKAS','🐺'],['RÓKA','🦊'],['SZARVAS','🦌'],['MÓKUS','🐿️'],['SÜN','🦔'],
+  ['DELFIN','🐬'],['BÁLNA','🐋'],['CÁPA','🦈'],['POLIP','🐙'],['RÁK','🦀'],
+  ['CSIGA','🐌'],['MÉH','🐝'],['PILLANGÓ','🦋'],['HANGYA','🐜'],['LÉGY','🪰'],
+  ['PATKÁNY','🐀'],['HÖRCSÖG','🐹'],['BORJÚ','🐮'],['BÁRÁNY','🐑'],['MALAC','🐷'],
+  ['KAKAS','🐓'],['TYÚK','🐔'],['FECSKE','🐦'],['GÓLYA','🦢'],['HATTYÚ','🦢'],
+  ['FLAMINGÓ','🦩'],['PÁVA','🦚'],['KROKODIL','🐊'],['GEPÁRD','🐆'],['GORILLA','🦍'],
+  ['KOALA','🐨'],['KENGURU','🦘'],['TEVE','🐪'],['LÁMA','🦙'],['BÖLÉNY','🦬'],
+  ['ORRSZARVÚ','🦏'],['VÍZILÓ','🦛'],['DENEVÉR','🦇'],['GÖRÉNY','🦡'],['NYEST','🦝'],
+  ['HIÚZ','🐈'],['PUMA','🐆'],['JAGUÁR','🐆'],['LEOPÁRD','🐆'],['MOSÓMEDVE','🦝'],
+  ['OPOSSZUM','🐀'],['TAPIR','🦏'],['ALPAKA','🦙'],['CSIKÓ','🐴'],['KISKUTYA','🐶'],
+  ['KISCICA','🐱'],['KISNYÚL','🐰'],['KISEGÉR','🐭'],['CSIBÉ','🐥'],['KACSALING','🦆'],
+  ['SÁRKÁNY','🐉'],['UNIKORNIS','🦄'],['GRIFFMADÁR','🦅'],['BAGLYOCSKA','🦉'],
+  ['CIPELŐS','🐌'],['HERNYÓ','🐛'],['SZÚNYOG','🦟'],['SZITAKÖTŐ','🦗'],['BOGÁR','🐛'],
+  ['KATICABOGÁR','🐞'],['PÓKVADÁSZ','🕷️'],['PÓK','🕷️'],['SKORPIÓ','🦂'],['SZÁZLÁBÚ','🐛'],
+
+  // ── TESTRÉSZEK (Body parts) ─────────────────────────
+  ['FEJ','👤'],['KÉZ','🖐️'],['LÁB','🦶'],['SZEM','👁️'],['FÜL','👂'],
+  ['ORR','👃'],['SZÁJ','👄'],['FOG','🦷'],['HAJ','💇'],['HAS','🫃'],
+  ['NYAK','🫀'],['VÁLL','💪'],['KÖNYÖK','💪'],['TÉRD','🦵'],['UJJ','👆'],
+  ['TALP','👣'],['HOMLOK','🧠'],['CSUKLÓ','✋'],['BOKA','🦶'],['HÁT','🔙'],
+  ['MELL','❤️'],['CSÍPŐ','💃'],['KAR','💪'],['COMB','🦵'],['LÁBSZÁR','🦵'],
+  ['SAROK','👣'],['BORDA','🫀'],['GERINC','🦴'],['CSONT','🦴'],['IZOM','💪'],
+  ['ÉR','🫀'],['VÉR','🩸'],['AGY','🧠'],['SZÍV','❤️'],['TÜDŐ','🫁'],
+  ['MÁJ','🫀'],['VEsE','🫀'],['GYOMOR','🍽️'],
+
+  // ── ÉTEL & ITAL (Food & drinks) ─────────────────────
+  ['ALMA','🍎'],['KÖRTE','🍐'],['SZILVA','🍑'],['BARACK','🍑'],
+  ['CSERESZNYE','🍒'],['MÁLNA','🫐'],['EPER','🍓'],['NARANCS','🍊'],
+  ['CITROM','🍋'],['BANÁN','🍌'],['SZŐLŐ','🍇'],['DIÓ','🌰'],
+  ['MOGYORÓ','🥜'],['MÉZ','🍯'],['TEJ','🥛'],['VAJ','🧈'],
+  ['SAJT','🧀'],['TOJÁS','🥚'],['KENYÉR','🍞'],['SÜTI','🍪'],
+  ['TORTA','🎂'],['LEVES','🍲'],['RIZS','🍚'],['KRUMPLI','🥔'],
+  ['SÁRGARÉPA','🥕'],['HAGYMA','🧅'],['BORSÓ','🫛'],['KUKORICA','🌽'],
+  ['PAPRIKA','🫑'],['PARADICSOM','🍅'],['UBORKA','🥒'],['GOMBA','🍄'],
+  ['ZSEMLE','🥐'],['PALACSINTA','🥞'],['LEKVÁR','🫙'],['CUKOR','🍬'],
+  ['FAGYLALT','🍦'],['CSOKI','🍫'],['KEKSZ','🍘'],['KOLBÁSZ','🌭'],
+  ['SONKA','🥩'],['RÁNTOTTA','🍳'],['SZENDVICS','🥪'],['PIZZA','🍕'],
+  ['TÉSZTA','🍝'],['PÖRKÖLT','🍲'],['GULYÁS','🍲'],['RÉTES','🥐'],
+  ['FÁNK','🍩'],['LÁNGOS','🫓'],['KAKAÓ','☕'],['KÁVÉ','☕'],
+  ['TEA','🍵'],['VÍZ','💧'],['LIMONÁDÉ','🍋'],['BOR','🍷'],
+  ['SÖR','🍺'],['KOKTÉL','🍹'],['JUICE','🧃'],['TEJFÖL','🥛'],
+  ['TEJSZÍN','🥛'],['JOGHURT','🥛'],['KEFIR','🥛'],['VÖRÖSHAGYMA','🧅'],
+  ['SALATA','🥗'],['MÁJAS','🥩'],['KOLBÁSZKA','🌭'],['VIRSLI','🌭'],
+  ['HURKA','🌭'],['SZALÁMI','🥩'],['LIBAMÁJ','🍗'],['CSIRKEMELL','🍗'],
+  ['HALSÜTEMÉNY','🐟'],['RÁKLEVÉS','🦀'],['MEGGYLÉ','🍒'],['ALMASZÓSZ','🍎'],
+  ['MUSTÁR','🌭'],['KETCHUP','🍅'],['MAJONÉZ','🥚'],['ECET','🍾'],
+  ['OLAJ','🫙'],['SÓ','🧂'],['BORS','🌶️'],['PAPRIKÁS','🌶️'],
+
+  // ── OTTHON (Home & household) ───────────────────────
+  ['HÁZ','🏠'],['AJTÓ','🚪'],['ABLAK','🪟'],['SZOBA','🛋️'],
+  ['KONYHA','🍳'],['FÜRDŐ','🛁'],['GARÁZS','🏚️'],['KERT','🌳'],
+  ['TERASZ','🪴'],['FAL','🧱'],['TETŐ','🏠'],['LÉPCSŐ','🪜'],
+  ['SZEKRÉNY','🗄️'],['ÁGY','🛏️'],['PÁRNA','🛏️'],['TAKARÓ','🛏️'],
+  ['SZÉK','🪑'],['ASZTAL','🪑'],['LÁMPA','💡'],['KÖNYV','📚'],
+  ['TOLL','✏️'],['TÜKÖR','🪞'],['POHÁR','🥛'],['TÁNYÉR','🍽️'],
+  ['KANÁL','🥄'],['VILLA','🍴'],['KÉS','🔪'],['BÖGRE','☕'],
+  ['FAZÉK','🍲'],['MOSOGATÓ','🚰'],['HŰTŐ','❄️'],['TŰZHELY','🔥'],
+  ['PORSZÍVÓ','🧹'],['SEPRŰ','🧹'],['SZAPPAN','🧼'],['FOGKEFE','🪥'],
+  ['TÖRÖLKÖZŐ','🛁'],['SZŐNYEG','🏠'],['KULCS','🔑'],['CSENGŐ','🔔'],
+  ['TELEFON','📱'],['TÉVÉ','📺'],['RÁDIÓ','📻'],['SZÁMÍTÓGÉP','💻'],
+  ['NYOMTATÓ','🖨️'],['TABLET','📱'],['EGÉR','🖱️'],['BILLENTYŰ','⌨️'],
+  ['LÁMPATEST','💡'],['GYERTYA','🕯️'],['KÉPKERET','🖼️'],['POLC','📚'],
+  ['FIÓK','🗄️'],['KOSÁR','🧺'],['VÖDÖR','🪣'],['LOCSOLÓ','🪣'],
+  ['SZERSZÁM','🔧'],['KALAPÁCS','🔨'],['CSAVARHÚZÓ','🪛'],['FOGÓ','🔧'],
+  ['FŰRÉSZ','🪚'],['LÉTRA','🪜'],['FESTÉKHENGERÉSZ','🖌️'],['KEFE','🖌️'],
+
+  // ── TERMÉSZET (Nature) ──────────────────────────────
+  ['NAP','☀️'],['HOLD','🌙'],['CSILLAG','⭐'],['ESŐ','🌧️'],
+  ['SZÉL','💨'],['HÓ','❄️'],['JÉG','🧊'],['TÓ','🏞️'],
+  ['FOLYÓ','🌊'],['TENGER','🌊'],['HEGY','⛰️'],['VÖLGY','🏔️'],
+  ['MEZŐ','🌾'],['ERDŐ','🌲'],['FA','🌳'],['VIRÁG','🌸'],
+  ['FŰ','🌿'],['KŐ','🪨'],['FÖLD','🌍'],['FELHŐ','☁️'],
+  ['SZIVÁRVÁNY','🌈'],['VILLÁM','⚡'],['HOMOK','🏖️'],['FORRÁS','💧'],
+  ['PATAK','🌊'],['TAVASZ','🌸'],['NYÁR','☀️'],['ŐSZ','🍂'],
+  ['TÉL','❄️'],['HAJNAL','🌅'],['ESTE','🌆'],['ÉJJEL','🌃'],
+  ['KAKTUSZ','🌵'],['BAMBUSZ','🎋'],['PÁFRÁNY','🌿'],['BOKOR','🌿'],
+  ['GÁT','🏞️'],['ZUHATAG','💧'],['GEJZÍR','♨️'],['VULKÁN','🌋'],
+  ['SIVATAG','🏜️'],['DZSUNGEL','🌴'],['PUSZTA','🌾'],['LÁP','🌿'],
+  ['JÉGHEGY','🧊'],['GLECCSER','⛰️'],['FJORD','🌊'],['LAGÚNA','🌊'],
+
+  // ── SZÍNEK (Colors) ─────────────────────────────────
+  ['PIROS','🔴'],['KÉK','🔵'],['ZÖLD','🟢'],['SÁRGA','🟡'],
+  ['FEHÉR','⬜'],['FEKETE','⬛'],['BARNA','🟫'],['LILA','🟣'],
+  ['NARANCS','🟠'],['SZÜRKE','🩶'],['RÓZSASZÍN','🩷'],['ARANY','🥇'],
+  ['EZÜST','🥈'],['TÜRKIZ','💎'],['BORDÓ','🍷'],['INDIGÓ','💜'],
+  ['OLÍVA','🫒'],['LAZAC','🐟'],['MÁLYVA','💜'],['KRÉM','🍦'],
+  ['BÉZS','🟫'],['KORALL','🪸'],['TERRAKOTTA','🟫'],['HALVÁNYKÉK','🔵'],
+
+  // ── CSALÁD (Family) ─────────────────────────────────
+  ['ANYA','👩'],['APA','👨'],['NAGYMAMA','👵'],['NAGYPAPA','👴'],
+  ['FIÚ','👦'],['LÁNY','👧'],['BABA','👶'],['NÉNI','👩'],
+  ['BÁCSI','👨'],['UNOKA','🧒'],['NŐVÉR','👩'],['FIVÉR','👦'],
+  ['ROKON','👨‍👩‍👧'],['BARÁT','🤝'],['BARÁTNŐ','🤝'],['SZOMSZÉD','🏠'],
+  ['TANÁR','👨‍🏫'],['TANÍTÓNŐ','👩‍🏫'],['ORVOS','👨‍⚕️'],['ÁPOLÓNŐ','👩‍⚕️'],
+
+  // ── JÁRMŰVEK (Vehicles) ─────────────────────────────
+  ['AUTÓ','🚗'],['BUSZ','🚌'],['VONAT','🚂'],['REPÜLŐ','✈️'],
+  ['HAJÓ','🚢'],['KERÉKPÁR','🚲'],['MOTOR','🛵'],['TAXI','🚕'],
+  ['MENTŐ','🚑'],['TŰZOLTÓ','🚒'],['RENDŐR','🚓'],['TRAKTOR','🚜'],
+  ['KAMION','🚛'],['VILLAMOS','🚊'],['METRÓ','🚇'],['VITORLÁS','⛵'],
+  ['CSÓNAK','🚤'],['HELIKOPTER','🚁'],['RAKÉTA','🚀'],['SZÁN','🛷'],
+  ['ROLLER','🛴'],['BICIKLI','🚲'],['KISAUTÓ','🚗'],['REPÜLŐGÉP','✈️'],
+  ['KISBUSZ','🚐'],['MENTŐAUTÓ','🚑'],['DÖMPER','🚛'],['KOTRÓGÉP','🚜'],
+  ['TARGONCA','🚜'],['MOZDONY','🚂'],['VILLAMOSVONTATÓ','🚊'],['LIBEGŐ','🚡'],
+  ['FELVONÓ','🛗'],['TEHERAUTÓ','🚚'],['SIMÍTÓGÉP','🚜'],['HÓEKE','🚜'],
+
+  // ── RUHA (Clothing) ─────────────────────────────────
+  ['ING','👕'],['NADRÁG','👖'],['SZOKNYA','👗'],['RUHA','👗'],
+  ['KABÁT','🧥'],['SAPKA','🧢'],['CIPŐ','👟'],['CSIZMA','👢'],
+  ['ZOKNI','🧦'],['KESZTYŰ','🧤'],['SÁL','🧣'],['ÖV','👔'],
+  ['KALAP','🎩'],['PULÓVER','🧥'],['DZSEKI','🧥'],['KÖTÉNY','👘'],
+  ['HARISNYA','🧦'],['PAPUCS','🩴'],['SZANDÁL','👡'],['TORNA CIPŐ','👟'],
+  ['ZUBBONY','🥋'],['MELLÉNY','🧥'],['OVERALL','👕'],['PIZSAMÁ','🌙'],
+  ['ESERNYŐ','☂️'],['NAPELLENZŐ','🧢'],['SZEMÜVEG','👓'],['NYAKLÁNC','📿'],
+  ['GYŰRŰ','💍'],['KARKÖTŐ','📿'],['FÜLBEVALÓ','📿'],['KITŰZŐ','🎖️'],
+
+  // ── ISKOLA & JÁTÉK (School & Toys) ──────────────────
+  ['LABDA','⚽'],['KIRAKÓ','🧩'],['CERUZA','✏️'],['RADÍR','⌫'],
+  ['VONALZÓ','📏'],['TÁSKA','🎒'],['FÜZET','📓'],['FESTÉK','🎨'],
+  ['ECSET','🖌️'],['OLLÓ','✂️'],['HINTA','🎠'],['CSÚSZDA','🎪'],
+  ['KOCKA','🎲'],['PUZZLE','🧩'],['RAJZ','✏️'],['SAKK','♟️'],
+  ['MESE','📖'],['DAL','🎵'],['ZENE','🎶'],['TÁNC','💃'],
+  ['GITÁR','🎸'],['ZONGORA','🎹'],['DOB','🥁'],['FURULYA','🪈'],
+  ['LABDARÚGÁS','⚽'],['KOSÁRLABDA','🏀'],['TENISZ','🎾'],['ÚSZÁS','🏊'],
+  ['FUTÁS','🏃'],['UGRÁS','🤸'],['KERÉKPÁROZÁS','🚲'],['KORCSOLYA','⛸️'],
+  ['HÓGOLYÓ','❄️'],['HÓEMBER','⛄'],['SZÁNKÓ','🛷'],['SÁRKÁNY','🪁'],
+  ['YO-YO','🪀'],['PÖRGETTYŰ','🪀'],['BÁBU','🪆'],['PUHATÁSKA','🧸'],
+  ['MACKÓ','🧸'],['NYUSZI BABÁ','🐰'],['AUTÓPÁLYA','🚗'],['LEGO','🧱'],
+
+  // ── HELYEK (Places) ─────────────────────────────────
+  ['ISKOLA','🏫'],['ÓVODA','🏫'],['KÓRHÁZ','🏥'],['POSTA','📮'],
+  ['BOLT','🏪'],['PIAC','🛒'],['BANK','🏦'],['HOTEL','🏨'],
+  ['ÉTTEREM','🍽️'],['MOZI','🎬'],['MÚZEUM','🏛️'],['PARK','🌳'],
+  ['STRAND','🏖️'],['USZODA','🏊'],['STADION','🏟️'],['REPÜLŐTÉR','✈️'],
+  ['PÁLYAUDVAR','🚂'],['KIKÖTŐ','⛵'],['TEMPLOM','⛪'],['VÁR','🏰'],
+  ['KASTÉLY','🏰'],['TORONY','🗼'],['HÍD','🌉'],['ALAGÚT','🚇'],
+  ['ÚT','🛣️'],['UTCA','🏙️'],['TÉR','🏛️'],['MEZŐ','🌾'],
+  ['KÖNYVTÁR','📚'],['ÁLLATKERTI','🦁'],['VIDÁMPARK','🎡'],['CIRKUSZ','🎪'],
+  ['PÉKSÉG','🥐'],['GYÓGYSZERTÁR','💊'],['FODRÁSZ','💇'],['BENZINKÚT','⛽'],
+  ['RENDŐRSÉG','🚓'],['TŰZŐRSÉG','🚒'],['MENTŐÁLLOMÁS','🚑'],['VÁROSHÁZA','🏛️'],
+
+  // ── IDŐJÁRÁS (Weather) ──────────────────────────────
+  ['VIHAR','⛈️'],['KÖD','🌫️'],['DARA','❄️'],['FAGY','🧊'],
+  ['OLVADÁS','💧'],['ÁRVÍZ','🌊'],['MELEG','🌡️'],['HIDEG','🥶'],
+  ['SZELLŐ','💨'],['ZIVATAR','⛈️'],['JÉGESŐ','🌨️'],['HÓVIHAR','❄️'],
+  ['NAPFÉNY','☀️'],['FELHŐS','☁️'],['PÁRÁS','💧'],['SZÁRAZ','☀️'],
+
+  // ── MELLÉKNEVEK (Adjectives) ────────────────────────
+  ['NAGY','🔼'],['KIS','🔽'],['SZÉP','💄'],['JÓ','😊'],
+  ['ROSSZ','😠'],['GYORS','⚡'],['LASSÚ','🐌'],['ERŐS','💪'],
+  ['MAGAS','📏'],['HOSSZÚ','↔️'],['RÖVID','↕️'],['VASTAG','⬛'],
+  ['NEHÉZ','🏋️'],['KÖNNYŰ','🪶'],['KEMÉNY','💎'],['PUHA','🪶'],
+  ['ÉDES','🍬'],['SAVANYÚ','🍋'],['KESERŰ','😖'],['SÓS','🧂'],
+  ['CSÍPŐS','🌶️'],['ÍZLETES','😋'],['FRISS','🌿'],['RÉGI','🏺'],
+  ['ÚJ','✨'],['ÖREG','👴'],['FIATAL','👶'],['VIDÁM','😄'],
+  ['SZOMORÚ','😢'],['MÉRGES','😠'],['FÉLŐS','😨'],['BÁTOR','🦁'],
+  ['OKOS','🧠'],['BUTA','😶'],['SZORGALMAS','📚'],['LUSTA','😴'],
+  ['TISZTA','🛁'],['PISZKOS','🪣'],['SZÁRAZ','☀️'],['NEDVES','💧'],
+  ['EGYENES','📏'],['GÖRBE','〰️'],['ÉLES','🔪'],['TOMPA','🔔'],
+  ['ZAJOS','🔊'],['CSENDES','🤫'],['FÉNYES','💡'],['SÖTÉT','🌑'],
+
+  // ── CSELEKVÉSEK (Actions as nouns) ──────────────────
+  ['FUTÁS','🏃'],['UGRÁS','🤸'],['ÚSZÁS','🏊'],['EVÉS','🍽️'],
+  ['IVÁS','🥤'],['JÁTÉK','🎮'],['OLVASÁS','📖'],['ÍRÁS','✏️'],
+  ['RAJZOLÁS','🎨'],['FESTÉS','🖌️'],['ÉNEKLÉS','🎵'],['TÁNCOLÁS','💃'],
+  ['NEVETÉS','😂'],['SÍRÁS','😢'],['ALVÁS','💤'],['ÜLÉS','🪑'],
+  ['ÁLLÁS','🧍'],['SÉTÁLÁS','🚶'],['BÁMULÁS','👀'],['HALLGATÁS','👂'],
+  ['FŐZÉS','👨‍🍳'],['MOSÁS','🧺'],['TAKARÍTÁS','🧹'],['VÁSÁRLÁS','🛒'],
+
+  // ── SZÁMOK (Numbers) ────────────────────────────────
+  ['EGY','1️⃣'],['KETTŐ','2️⃣'],['HÁROM','3️⃣'],['NÉGY','4️⃣'],
+  ['ÖT','5️⃣'],['HAT','6️⃣'],['HÉT','7️⃣'],['NYOLC','8️⃣'],
+  ['KILENC','9️⃣'],['TÍZ','🔟'],['SZÁZ','💯'],['EZER','🔢'],
+  ['NULLA','0️⃣'],['ELSŐ','🥇'],['MÁSODIK','🥈'],['HARMADIK','🥉'],
+
+  // ── EGYÉB (Miscellaneous) ────────────────────────────
+  ['IGEN','✅'],['NEM','❌'],['KÖSZÖNÖM','🙏'],['KÉREM','🙏'],
+  ['SZIA','👋'],['VISZLÁT','👋'],['SEGÍTSÉG','🆘'],['VIGYÁZZ','⚠️'],
+  ['IGEN','✅'],['LEHET','💬'],['TILOS','🚫'],['SZABAD','🔓'],
+  ['JOBB','➡️'],['BAL','⬅️'],['FEL','⬆️'],['LE','⬇️'],
+  ['ELŐRE','▶️'],['HÁTRA','◀️'],['BELÜL','🔵'],['KÍVÜL','⭕'],
+  ['FENT','⬆️'],['LENT','⬇️'],['MELLETT','↕️'],['MÖGÖTT','↩️'],
+  ['KÖZÖTT','↔️'],['ALATT','⬇️'],['FELETT','⬆️'],['KÖRÜL','🔄'],
+  ['REGGEL','🌅'],['DÉLBEN','☀️'],['ESTE','🌆'],['ÉJJEL','🌃'],
+  ['MA','📅'],['HOLNAP','📅'],['TEGNAP','📅'],['HÉT','📅'],
+  ['HÓNAP','🗓️'],['ÉV','🎂'],['ÓRA','⏰'],['PERC','⏱️'],
+  ['MÁSODPERC','⏱️'],['IDŐ','⏰'],['NAP','📅'],['DÁTUM','📅'],
+  ['JANUÁR','❄️'],['FEBRUÁR','💝'],['MÁRCIUS','🌸'],['ÁPRILIS','🌧️'],
+  ['MÁJUS','🌺'],['JÚNIUS','☀️'],['JÚLIUS','🏖️'],['AUGUSZTUS','🌻'],
+  ['SZEPTEMBER','🍂'],['OKTÓBER','🎃'],['NOVEMBER','🍁'],['DECEMBER','🎄'],
+  ['HÉTFŐ','📅'],['KEDD','📅'],['SZERDA','📅'],['CSÜTÖRTÖK','📅'],
+  ['PÉNTEK','🎉'],['SZOMBAT','🥳'],['VASÁRNAP','🌞'],
+  ['KARÁCSONY','🎄'],['HÚSVÉT','🐣'],['SZÜLETÉSNAP','🎂'],['ÚJÉV','🎆'],
+  ['MESE','📖'],['VERS','🎵'],['DAL','🎵'],['REGE','📖'],
+  ['KÖNYV','📚'],['FILM','🎬'],['SZÍNHÁZ','🎭'],['OPERA','🎭'],
+  ['FESTMÉNY','🖼️'],['SZOBOR','🗽'],['FOTÓ','📷'],['VIDEÓ','📹'],
+];
+
+/* ─────────────────────────────────────────────────────
+   GENERATE DISTRACTORS
+   Pick 2 letters from the HU alphabet that don't appear in the word
+───────────────────────────────────────────────────── */
+function getDistractors(word, count = 2) {
+  const lettersInWord = new Set(word.split(''));
+  const pool = HU_ALPHA.filter(l => !lettersInWord.has(l));
+  const shuffled = shuffle(pool);
+  return shuffled.slice(0, count);
+}
+
+/* ─────────────────────────────────────────────────────
+   SLOT SIZE — scales with word length so it always fits
+───────────────────────────────────────────────────── */
+function applySlotSize(wordLen) {
+  const maxW     = window.innerWidth * 0.86;
+  const gap      = Math.max(3, Math.min(6, Math.floor(12 / wordLen)));
+  const slotSize = Math.max(30, Math.min(52, Math.floor((maxW - gap * (wordLen - 1)) / wordLen)));
+  const slotFs   = Math.round(slotSize * 0.58);
+  const tileSize = Math.min(76, Math.round(slotSize * 1.45));
+  const tileFs   = Math.round(tileSize * 0.54);
+
+  const root = document.documentElement;
+  root.style.setProperty('--slot-sz', slotSize + 'px');
+  root.style.setProperty('--slot-fs', slotFs   + 'px');
+  root.style.setProperty('--slot-gap', gap     + 'px');
+  root.style.setProperty('--tile-sz', tileSize + 'px');
+  root.style.setProperty('--tile-fs', tileFs   + 'px');
+
+  return { tileSize, tileFs };
+}
+
+/* ─────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────── */
+let sessionWords = [];   // 10 rounds picked from pool
+let roundIdx  = 0;
+let nextSlot  = 0;
+let tries     = 0;
+let stats     = [];
+let animating = false;
+let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
+
+/* ─────────────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────────────── */
+function init() {
+  // Pick 10 unique random words from the pool for this session
+  sessionWords = shuffle([...WORD_POOL]).slice(0, 10);
+  roundIdx = 0; tries = 0; stats = [];
+  buildDecorations();
+  buildStreamCreatures();
+  loadRound();
+  showScreen('game-screen');
+}
+
+function buildDecorations() {
+  const UPPER = [
+    {e:'☁️',t:'7%',l:'6%',s:46,z:2},{e:'☁️',t:'4%',l:'38%',s:58,z:2},{e:'☁️',t:'9%',r:'8%',s:38,z:2},
+    {e:'🌸',t:'44%',l:'6%',s:30,z:3},{e:'🌼',t:'56%',l:'20%',s:24,z:3},{e:'🌺',t:'42%',r:'10%',s:28,z:3},
+    {e:'🌸',t:'60%',r:'24%',s:22,z:3},{e:'🌻',t:'50%',l:'42%',s:26,z:3},{e:'🦋',t:'35%',l:'28%',s:22,z:4},
+  ];
+  const LOWER = [
+    {e:'🌸',t:'20%',r:'26%',s:24},{e:'🌼',t:'60%',r:'40%',s:20},
+    {e:'🌺',t:'18%',r:'18%',s:22},{e:'🍀',t:'70%',r:'52%',s:18},
+  ];
+  ['upper-field','lower-field'].forEach(id =>
+    document.getElementById(id).querySelectorAll('.deco').forEach(d => d.remove()));
+  UPPER.forEach(d => { const el = mkDeco(d); el.style.zIndex = d.z||3; document.getElementById('upper-field').appendChild(el); });
+  LOWER.forEach(d => document.getElementById('lower-field').appendChild(mkDeco(d)));
+}
+
+function mkDeco(d) {
+  const el = document.createElement('div'); el.className='deco'; el.textContent=d.e;
+  el.style.fontSize=d.s+'px';
+  if(d.t) el.style.top=d.t; if(d.l) el.style.left=d.l; if(d.r) el.style.right=d.r;
+  return el;
+}
+
+function buildStreamCreatures() {
+  const stream = document.getElementById('stream');
+  stream.querySelectorAll('.stream-creature').forEach(c=>c.remove());
+  [{e:'🐟',top:'22%',dur:9,delay:0,dir:'left'},{e:'🐠',top:'58%',dur:13,delay:3,dir:'left'},
+   {e:'🐡',top:'35%',dur:7,delay:6,dir:'right'},{e:'🦆',top:'15%',dur:11,delay:1,dir:'left'}]
+  .forEach(c => {
+    const el = document.createElement('div'); el.className='stream-creature deco';
+    el.textContent=c.e; el.style.top=c.top; el.style.fontSize='20px';
+    el.style.animation=`${c.dir==='left'?'swimL':'swimR'} ${c.dur}s ${c.delay}s linear infinite`;
+    stream.appendChild(el);
+  });
+}
+
+/* ─────────────────────────────────────────────────────
+   LOAD ROUND
+───────────────────────────────────────────────────── */
+function loadRound() {
+  const [word, emoji] = sessionWords[roundIdx];
+  nextSlot = 0; tries = 0; animating = false;
+
+  document.getElementById('round-num').textContent = roundIdx + 1;
+  document.getElementById('success-overlay').classList.remove('show');
+  document.getElementById('word-emoji').textContent = emoji;
+  document.getElementById('beetle').classList.remove('celebrate','sad');
+
+  applySlotSize(word.length);
+  buildSlots(word);
+
+  document.querySelectorAll('.letter-tile').forEach(t => t.remove());
+  spawnTiles(word, getDistractors(word, 2));
+}
+
+/* Build empty slots — each contains the ghost letter */
+function buildSlots(word) {
+  const container = document.getElementById('word-slots');
+  container.innerHTML = '';
+  for (let i = 0; i < word.length; i++) {
+    const slot = document.createElement('div');
+    slot.id = `slot-${i}`;
+    // All slot states share slot-base; specific state class added on top
+    slot.className = `slot-base ${i === 0 ? 'slot-active' : 'slot-future'}`;
+    slot.textContent = word[i];   // ghost letter always present
+    container.appendChild(slot);
+  }
+}
+
+function spawnTiles(word, distractors) {
+  const layer    = document.getElementById('tiles-layer');
+  const gameRect = document.getElementById('game-screen').getBoundingClientRect();
+  const upper    = document.getElementById('upper-field').getBoundingClientRect();
+  const tileSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 72;
+
+  const letters  = shuffle([...word.split(''), ...distractors]);
+  const GAP = 10;
+  const cols = Math.ceil(Math.sqrt(letters.length));
+  const rows = Math.ceil(letters.length / cols);
+  const gridW = cols * tileSize + (cols - 1) * GAP;
+  const gridH = rows * tileSize + (rows - 1) * GAP;
+
+  const grassTop    = upper.top - gameRect.top + upper.height * 0.30;
+  const grassBottom = upper.bottom - gameRect.top - 8;
+  const startX = (gameRect.width - gridW) / 2;
+  const startY = grassTop + ((grassBottom - grassTop) - gridH) / 2;
+
+  letters.forEach((letter, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const lx = startX + col * (tileSize + GAP);
+    const ly = startY + row * (tileSize + GAP);
+
+    const tile = document.createElement('div');
+    tile.className = 'letter-tile';
+    tile.textContent = letter;
+    tile.dataset.letter = letter;
+    tile.dataset.origL  = lx;
+    tile.dataset.origT  = ly;
+    tile.style.left = lx + 'px'; tile.style.top = ly + 'px';
+    tile.style.zIndex = 60 + i;
+
+    tile.addEventListener('mousedown',  e => onDragStart(e, tile));
+    tile.addEventListener('touchstart', e => onDragStart(e, tile), {passive:false});
+    layer.appendChild(tile);
+  });
+}
+
+/* ─────────────────────────────────────────────────────
+   DRAG & DROP
+───────────────────────────────────────────────────── */
+function evtPos(e) { const s=e.touches?.[0]??e.changedTouches?.[0]??e; return {x:s.clientX,y:s.clientY}; }
+function gameOffset() { return document.getElementById('game-screen').getBoundingClientRect(); }
+
+function onDragStart(e, tile) {
+  if (animating || tile.classList.contains('used')) return;
+  e.preventDefault();
+  const pos=evtPos(e), rect=tile.getBoundingClientRect();
+  drag={on:true,tile,ox:pos.x-rect.left,oy:pos.y-rect.top,origL:parseFloat(tile.dataset.origL),origT:parseFloat(tile.dataset.origT)};
+  tile.classList.add('grabbed');
+  document.addEventListener('mousemove',  onDragMove);
+  document.addEventListener('mouseup',    onDragEnd);
+  document.addEventListener('touchmove',  onDragMove, {passive:false});
+  document.addEventListener('touchend',   onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!drag.on) return; e.preventDefault();
+  const pos=evtPos(e), gr=gameOffset();
+  drag.tile.style.left=(pos.x-gr.left-drag.ox)+'px';
+  drag.tile.style.top =(pos.y-gr.top -drag.oy)+'px';
+}
+
+function onDragEnd(e) {
+  if (!drag.on) return; drag.on=false;
+  document.removeEventListener('mousemove',  onDragMove);
+  document.removeEventListener('mouseup',    onDragEnd);
+  document.removeEventListener('touchmove',  onDragMove);
+  document.removeEventListener('touchend',   onDragEnd);
+
+  const tile=drag.tile; tile.classList.remove('grabbed');
+  const activeSlot=document.getElementById(`slot-${nextSlot}`);
+  if (!activeSlot) { snapBack(tile); return; }
+
+  const tR=tile.getBoundingClientRect(), sR=activeSlot.getBoundingClientRect();
+  const dist=Math.hypot((tR.left+tR.width/2)-(sR.left+sR.width/2),(tR.top+tR.height/2)-(sR.top+sR.height/2));
+
+  if (dist < 68) {
+    tries++;
+    if (tile.dataset.letter === sessionWords[roundIdx][0][nextSlot]) {
+      animating=true; lockAll(); animatePlaceLetter(tile, activeSlot, sessionWords[roundIdx][0][nextSlot]);
+    } else { animateWrong(tile); }
+  } else { snapBack(tile); }
+}
+
+function lockAll()   { document.querySelectorAll('.letter-tile:not(.used)').forEach(t=>t.style.pointerEvents='none'); }
+function unlockAll() { document.querySelectorAll('.letter-tile:not(.used)').forEach(t=>t.style.pointerEvents=''); }
+
+/* ─────────────────────────────────────────────────────
+   ANIMATIONS
+───────────────────────────────────────────────────── */
+function snapBack(tile) {
+  tile.style.transition='left .35s cubic-bezier(.34,1.56,.64,1),top .35s cubic-bezier(.34,1.56,.64,1)';
+  tile.style.left=drag.origL+'px'; tile.style.top=drag.origT+'px';
+  after(380,()=>tile.style.transition='');
+}
+
+function animatePlaceLetter(tile, slotEl, letter) {
+  const gr=gameOffset(), sR=slotEl.getBoundingClientRect();
+  const tileSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 72;
+  const destL=sR.left-gr.left+(sR.width -tileSize)/2;
+  const destT=sR.top -gr.top +(sR.height-tileSize)/2;
+
+  setTr(tile,'left .4s cubic-bezier(.34,1.56,.64,1),top .4s cubic-bezier(.34,1.56,.64,1),transform .3s ease');
+  tile.style.left=destL+'px'; tile.style.top=destT+'px'; tile.style.transform='scale(1.1)';
+
+  after(400,()=>{
+    tile.style.transition='opacity .15s ease,transform .15s ease';
+    tile.style.opacity='0'; tile.style.transform='scale(.8)';
+    after(160,()=>tile.classList.add('used'));
+
+    // Fill the slot — swap class, keep letter
+    slotEl.className='slot-base slot-filled pop';
+    // textContent stays as the letter (already set)
+
+    nextSlot++;
+    const wordLen = sessionWords[roundIdx][0].length;
+
+    if (nextSlot < wordLen) {
+      const nextEl=document.getElementById(`slot-${nextSlot}`);
+      if (nextEl) nextEl.className='slot-base slot-active';
+      beetleNod();
+      after(200,()=>{ animating=false; unlockAll(); });
+    } else {
+      after(120,()=>wordComplete());
+    }
+  });
+}
+
+function wordComplete() {
+  launchConfetti();
+  beetleReact('celebrate');
+  speakWord(sessionWords[roundIdx][0]);
+  document.getElementById('success-label').textContent = sessionWords[roundIdx][1]+'  '+sessionWords[roundIdx][0];
+  after(300,()=>document.getElementById('success-overlay').classList.add('show'));
+}
+
+function beetleNod() {
+  const b=document.getElementById('beetle');
+  b.style.transition='transform .15s ease'; b.style.transform='translateY(-66%) scale(1.15)';
+  after(180,()=>{ b.style.transform='translateY(-50%) scale(1)'; after(200,()=>b.style.transition=''); });
+}
+
+function animateWrong(tile) {
+  animating=true; lockAll(); beetleReact('sad'); speakWrong();
+  const gr=gameOffset(), sR=document.getElementById('stream').getBoundingClientRect();
+  const streamY=sR.top+sR.height/2-gr.top-37, curL=parseFloat(tile.style.left);
+
+  setTr(tile,'left .15s ease,top .38s cubic-bezier(.5,-.1,.9,.8),transform .4s ease');
+  tile.style.top=streamY+'px'; tile.style.transform='rotate(28deg) scale(.82)';
+
+  after(430,()=>{
+    setTr(tile,'left .4s ease,top .22s ease,transform .3s ease');
+    tile.style.transform='rotate(-18deg) scale(.82)'; tile.style.top=(streamY+10)+'px';
+    after(300,()=>{
+      setTr(tile,'left .5s ease,top .25s ease,transform .25s ease');
+      tile.style.left=Math.max(curL-70,-10)+'px'; tile.style.transform='rotate(8deg) scale(.82)';
+      after(520,()=>{
+        setTr(tile,'left .45s cubic-bezier(.34,1.56,.64,1),top .45s cubic-bezier(.34,1.56,.64,1),transform .3s ease');
+        tile.style.left=drag.origL+'px'; tile.style.top=drag.origT+'px'; tile.style.transform='';
+        after(480,()=>{ tile.style.transition=''; animating=false; unlockAll(); });
+      });
+    });
+  });
+}
+
+/* ─────────────────────────────────────────────────────
+   CONFETTI
+───────────────────────────────────────────────────── */
+function launchConfetti() {
+  const cv=document.getElementById('confetti-canvas');
+  cv.width=window.innerWidth; cv.height=window.innerHeight;
+  const ctx=cv.getContext('2d');
+  const C=['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF922B','#C77DFF','#FF85A1'];
+  const p=Array.from({length:110},()=>({x:Math.random()*cv.width,y:-15-Math.random()*50,vx:(Math.random()-.5)*8,vy:Math.random()*5+2,g:.13,w:Math.random()*12+5,h:Math.random()*6+4,r:Math.random()*360,rs:(Math.random()-.5)*15,c:C[Math.random()*C.length|0]}));
+  let f=0,MAX=160;
+  (function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    p.forEach(q=>{q.x+=q.vx;q.y+=q.vy;q.vy+=q.g;q.vx*=.99;q.r+=q.rs;ctx.save();ctx.globalAlpha=f<MAX-40?1:(MAX-f)/40;ctx.translate(q.x,q.y);ctx.rotate(q.r*Math.PI/180);ctx.fillStyle=q.c;ctx.fillRect(-q.w/2,-q.h/2,q.w,q.h);ctx.restore();});
+    if(++f<MAX) requestAnimationFrame(draw); else ctx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+
+/* ─────────────────────────────────────────────────────
+   FLOW
+───────────────────────────────────────────────────── */
+function nextRound() {
+  stats.push({word:sessionWords[roundIdx][0],emoji:sessionWords[roundIdx][1],tries});
+  roundIdx++;
+  if (roundIdx >= sessionWords.length) { showStats(); return; }
+  document.getElementById('success-overlay').classList.remove('show');
+  document.querySelectorAll('.letter-tile').forEach(t=>{t.style.transition='opacity .2s ease';t.style.opacity='0';});
+  after(220,()=>{ document.querySelectorAll('.letter-tile').forEach(t=>t.remove()); loadRound(); });
+}
+
+function showStats() {
+  showScreen('stats-screen');
+  const list=document.getElementById('stats-list');
+  list.innerHTML=''; let total=0;
+  stats.forEach((s,i)=>{
+    const stars=s.tries===0?3:s.tries<=2?2:1; total+=stars;
+    const row=document.createElement('div'); row.className='stat-row'; row.style.animationDelay=(i*.06)+'s';
+    row.innerHTML=`<span class="stat-emoji">${s.emoji}</span><span class="stat-word">${s.word}</span><span class="stat-tries">${s.tries===0?'🎯 Hibátlan!':s.tries+' hiba'}</span><span class="stat-stars">${'⭐'.repeat(stars)}${'☆'.repeat(3-stars)}</span>`;
+    list.appendChild(row);
+  });
+  document.getElementById('stats-total').textContent=`⭐ ${total} / 30 csillag`;
+}
+
+function restartGame() {
+  document.querySelectorAll('.letter-tile').forEach(t=>t.remove()); init();
+}
+
+/* ─────────────────────────────────────────────────────
+   SPEECH
+───────────────────────────────────────────────────── */
+function huVoice(){ return (window.speechSynthesis?.getVoices()??[]).find(v=>v.lang.startsWith('hu'))??null; }
+function speakWord(word){
+  if(!window.speechSynthesis) return; window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(word); u.rate=.78; u.pitch=1.15; u.volume=1;
+  const v=huVoice(); if(v){u.voice=v;u.lang=v.lang;}else{u.lang='hu-HU';}
+  window.speechSynthesis.speak(u);
+}
+function speakWrong(){
+  if(!window.speechSynthesis) return; window.speechSynthesis.cancel();
+  const ph=['nem jó!', 'ajajj!', 'nem-nem!', 'jujujj!'];
+  const u=new SpeechSynthesisUtterance(ph[Math.floor(Math.random()*ph.length)]);
+  u.rate=.82; u.pitch=1.3; u.volume=1;
+  const v=huVoice(); if(v){u.voice=v;u.lang=v.lang;}else{u.lang='hu-HU';}
+  window.speechSynthesis.speak(u);
+}
+if(window.speechSynthesis){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();
+}
+
+/* ─────────────────────────────────────────────────────
+   BEETLE
+───────────────────────────────────────────────────── */
+function beetleReact(mood){
+  const b=document.getElementById('beetle'); b.classList.remove('celebrate','sad');
+  void b.offsetWidth; b.classList.add(mood);
+  after(mood==='celebrate'?99999:1600,()=>b.classList.remove(mood));
+}
+
+/* ─────────────────────────────────────────────────────
+   UTILS
+───────────────────────────────────────────────────── */
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function after(ms,fn){ setTimeout(fn,ms); }
+function setTr(el,t){ el.style.transition=t; }
+function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function goBackHome(){ if(window.androidBack){window.androidBack();return;} history.back(); }
+
+window.addEventListener('load', init);
+window.addEventListener('resize',()=>{ document.querySelectorAll('.letter-tile').forEach(t=>t.remove()); const [word]=sessionWords[roundIdx]; applySlotSize(word.length); spawnTiles(word, getDistractors(word,2)); });
+</script>
+</body>
+</html>

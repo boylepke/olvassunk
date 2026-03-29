@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Learning Numbers · Little Sprouts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html, body { width:100%; height:100%; overflow:hidden; user-select:none; -webkit-user-select:none; font-family:'Nunito',sans-serif; background:#87CEEB; }
+
+    .screen { display:none; position:absolute; inset:0; flex-direction:column; }
+    .screen.active { display:flex; }
+
+    /* ══ SCENE ══════════════════════════════════════════ */
+    #game-screen { overflow:hidden; }
+
+    #upper-field {
+      flex:1; position:relative;
+      background:linear-gradient(180deg,#6EC6F0 0%,#A8DCF5 28%,#7ED168 28%,#8EDA78 100%);
+      overflow:visible;
+    }
+
+    .wave-divider { position:relative; z-index:15; line-height:0; flex-shrink:0; }
+    .wave-divider svg { display:block; width:100%; }
+
+    #stream {
+      flex-shrink:0; height:72px; position:relative;
+      background:#3AADE0; overflow:hidden; z-index:12;
+    }
+    #stream::before,#stream::after { content:''; position:absolute; inset:0; }
+    #stream::before {
+      background:repeating-linear-gradient(90deg,transparent 0,transparent 55px,rgba(255,255,255,.18) 55px,rgba(255,255,255,.18) 80px);
+      animation:ripple1 1.8s linear infinite;
+    }
+    #stream::after {
+      background:repeating-linear-gradient(90deg,transparent 0,transparent 35px,rgba(255,255,255,.10) 35px,rgba(255,255,255,.10) 50px);
+      animation:ripple2 2.8s linear infinite;
+    }
+    @keyframes ripple1 { to{background-position-x:-80px;} }
+    @keyframes ripple2 { to{background-position-x: 50px;} }
+
+    .stream-creature { position:absolute; font-size:20px; top:50%; transform:translateY(-50%); pointer-events:none; z-index:16; }
+    @keyframes swimRight { from{left:-8%;}  to{left:110%;} }
+    @keyframes swimLeft  { from{left:110%;transform:translateY(-50%) scaleX(-1);} to{left:-8%;transform:translateY(-50%) scaleX(-1);} }
+
+    /* ── Left bank ── */
+    #lower-field {
+      flex-shrink:0; height:36vh; position:relative;
+      background:linear-gradient(180deg,#6BBF58 0%,#59AB46 100%);
+      overflow:visible;
+    }
+
+    /* ── Number drop zone ─ bottom-left corner ── */
+    #drop-zone {
+      position:absolute;
+      left:18px; bottom:14px;
+      width:90px; height:90px;
+      border-radius:22px;
+      border:4px dashed rgba(255,255,255,0.5);
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Fredoka One',cursive;
+      font-size:62px;
+      color:rgba(255,255,255,0.3);
+      z-index:6;
+      animation:zonePulse 2s ease-in-out infinite;
+      transition:border-color .3s, background .3s;
+    }
+    #drop-zone.correct {
+      animation:none;
+      border-style:solid; border-color:rgba(255,255,255,.9);
+      background:rgba(255,255,255,.18);
+      color:#fff;
+    }
+    @keyframes zonePulse {
+      0%,100% { box-shadow:0 0 0 0   rgba(255,255,255,.4); }
+      50%      { box-shadow:0 0 0 12px rgba(255,255,255,0); }
+    }
+
+    /* ── Count hint label ── */
+    #count-hint {
+      position:absolute; left:120px; bottom:28px;
+      font-family:'Fredoka One',cursive; font-size:14px;
+      color:rgba(255,255,255,.72); pointer-events:none; z-index:6;
+      line-height:1.35;
+    }
+
+    /* ── Animals scattered on grass ── */
+    .grass-critter {
+      position:absolute; pointer-events:none; user-select:none;
+      line-height:1; z-index:4;
+      animation:critterBob 2.5s ease-in-out infinite;
+    }
+    @keyframes critterBob {
+      0%,100% { transform:translateY(0) rotate(0deg);   }
+      50%      { transform:translateY(-5px) rotate(4deg); }
+    }
+
+    /* ── Beetle (right side of lower field) ── */
+    #beetle {
+      position:absolute; right:14px; top:50%; transform:translateY(-50%);
+      font-size:58px; z-index:8; pointer-events:none;
+      animation:beetleIdle 3s ease-in-out infinite; transform-origin:center bottom;
+    }
+    @keyframes beetleIdle {
+      0%,100%{transform:translateY(-50%) rotate(-4deg) scale(1);}
+      50%     {transform:translateY(-54%) rotate( 4deg) scale(1.02);}
+    }
+    #beetle.celebrate { animation:beetleCelebrate .6s ease infinite; }
+    @keyframes beetleCelebrate {
+      0%  {transform:translateY(-50%) scale(1)    rotate(0deg);  }
+      20% {transform:translateY(-80%) scale(1.25) rotate(-12deg);}
+      40% {transform:translateY(-50%) scale(1.1)  rotate(10deg); }
+      60% {transform:translateY(-72%) scale(1.2)  rotate(-8deg); }
+      80% {transform:translateY(-50%) scale(1.05) rotate(6deg);  }
+      100%{transform:translateY(-50%) scale(1)    rotate(0deg);  }
+    }
+    #beetle.sad { animation:beetleSad .5s ease 3; }
+    @keyframes beetleSad {
+      0%  {transform:translateY(-50%) rotate(0deg)   scale(1);   }
+      15% {transform:translateY(-44%) rotate(-14deg) scale(.92); }
+      35% {transform:translateY(-56%) rotate(10deg)  scale(.95); }
+      55% {transform:translateY(-44%) rotate(-8deg)  scale(.92); }
+      75% {transform:translateY(-50%) rotate(5deg)   scale(.96); }
+      100%{transform:translateY(-50%) rotate(0deg)   scale(1);   }
+    }
+
+    /* ── Number tiles (right side upper field) ── */
+    #tiles-layer { position:absolute; inset:0; pointer-events:none; z-index:50; }
+
+    .num-tile {
+      position:absolute; width:76px; height:76px;
+      background:#FFF8EE; border:3px solid #D9BC8E; border-radius:18px;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Fredoka One',cursive; font-size:46px; color:#3A2F24;
+      cursor:grab; pointer-events:auto; touch-action:none;
+      box-shadow:0 5px 0 #C0A060,0 7px 16px rgba(0,0,0,.16);
+      transition:transform .1s ease,box-shadow .1s ease;
+    }
+    .num-tile.grabbed {
+      cursor:grabbing; transform:scale(1.12) rotate(-4deg);
+      box-shadow:0 12px 0 #C0A060,0 18px 30px rgba(0,0,0,.22);
+      z-index:200!important;
+    }
+    .num-tile.used { opacity:.22; pointer-events:none; box-shadow:none; border-style:dashed; }
+
+    .deco { position:absolute; pointer-events:none; user-select:none; line-height:1; }
+
+    #round-badge { position:absolute; top:13px; right:13px; background:rgba(255,255,255,.88); backdrop-filter:blur(4px); border-radius:50px; padding:6px 14px; font-size:13px; font-weight:800; color:#3A4A2A; z-index:30; }
+    #back-btn    { position:absolute; top:13px; left:13px; width:44px; height:44px; background:rgba(255,255,255,.88); backdrop-filter:blur(4px); border:none; border-radius:50%; font-size:20px; cursor:pointer; z-index:30; display:grid; place-items:center; -webkit-tap-highlight-color:transparent; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+
+    /* ── "Right bank" label on upper field ── */
+    #right-bank-label {
+      position:absolute; right:16px; top:32%;
+      font-family:'Fredoka One',cursive; font-size:13px;
+      color:rgba(255,255,255,.65); pointer-events:none; z-index:30;
+      text-align:center; line-height:1.4;
+    }
+
+    /* ── Success overlay ── */
+    #success-overlay { display:none; position:absolute; inset:0; z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
+    #success-overlay.show { display:flex; }
+    .success-ring { background:rgba(255,255,255,.18); backdrop-filter:blur(6px); border:2px solid rgba(255,255,255,.35); border-radius:32px; padding:24px 38px; display:flex; flex-direction:column; align-items:center; gap:12px; animation:popIn .45s cubic-bezier(.34,1.56,.64,1) both; }
+    @keyframes popIn { from{transform:scale(.5) rotate(-5deg);opacity:0;} to{transform:scale(1) rotate(0deg);opacity:1;} }
+    .success-number { font-family:'Fredoka One',cursive; font-size:64px; color:#fff; text-shadow:0 3px 12px rgba(0,0,0,.2); animation:popIn .4s .05s cubic-bezier(.34,1.56,.64,1) both; }
+    .success-emojis { font-size:38px; letter-spacing:4px; animation:wiggle .6s ease-in-out infinite alternate; }
+    @keyframes wiggle { from{transform:rotate(-6deg) scale(1);} to{transform:rotate(6deg) scale(1.05);} }
+    .next-btn { background:#5DC04D; color:#fff; border:none; border-radius:50px; padding:14px 34px; font-family:'Fredoka One',cursive; font-size:22px; cursor:pointer; box-shadow:0 5px 0 #3A9A2B,0 7px 18px rgba(93,192,77,.35); -webkit-tap-highlight-color:transparent; transition:transform .1s,box-shadow .1s; animation:popIn .45s .18s cubic-bezier(.34,1.56,.64,1) both; }
+    .next-btn:active { transform:translateY(3px); box-shadow:0 2px 0 #3A9A2B; }
+
+    #confetti-canvas { position:fixed; inset:0; pointer-events:none; z-index:999; }
+
+    /* ══ STATS ══════════════════════════════════════════ */
+    #stats-screen { background:#F7F2EA; align-items:center; padding:44px 22px 32px; overflow-y:auto; gap:0; }
+    .stats-hero  { font-size:56px; margin-bottom:6px; animation:popIn .5s cubic-bezier(.34,1.56,.64,1) both; }
+    .stats-title { font-family:'Fredoka One',cursive; font-size:32px; color:#3A2F24; margin-bottom:4px; }
+    .stats-sub   { font-size:15px; font-weight:700; color:#8C7B6B; margin-bottom:22px; }
+    .stats-total { background:#FFD93D; border-radius:60px; padding:12px 28px; font-family:'Fredoka One',cursive; font-size:20px; color:#3A2F24; margin-bottom:20px; box-shadow:0 4px 12px rgba(255,217,61,.4),0 3px 0 #C8A820; }
+    .stats-list  { width:100%; max-width:380px; display:flex; flex-direction:column; gap:9px; margin-bottom:26px; }
+    .stat-row    { background:#fff; border-radius:16px; padding:13px 18px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,.06); animation:slideIn .3s ease both; }
+    @keyframes slideIn { from{opacity:0;transform:translateX(-16px);} to{opacity:1;transform:translateX(0);} }
+    .stat-num    { font-family:'Fredoka One',cursive; font-size:34px; color:#3A2F24; width:44px; text-align:center; }
+    .stat-critters { font-size:18px; flex:1; padding-left:8px; letter-spacing:2px; }
+    .stat-tries  { font-size:13px; font-weight:700; color:#8C7B6B; min-width:80px; text-align:center; }
+    .stat-stars  { font-size:18px; letter-spacing:1px; }
+    .play-again-btn { background:#6BBF59; color:#fff; border:none; border-radius:50px; padding:16px 40px; font-family:'Fredoka One',cursive; font-size:22px; cursor:pointer; box-shadow:0 5px 0 #4A9A38,0 7px 18px rgba(107,191,89,.35); -webkit-tap-highlight-color:transparent; }
+  </style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ═══ GAME SCREEN ══════════════════════════════════ -->
+<div id="game-screen" class="screen active">
+
+  <div id="upper-field">
+    <button id="back-btn" onclick="goBackHome()">←</button>
+    <div id="round-badge">Round <span id="round-num">1</span> / 10</div>
+    <!-- Number tiles injected here by JS -->
+  </div>
+
+  <div class="wave-divider" style="margin-bottom:-2px;z-index:14;">
+    <svg viewBox="0 0 360 22" preserveAspectRatio="none" height="22">
+      <path d="M0,11 Q45,0 90,11 T180,11 T270,11 T360,11 L360,22 L0,22Z" fill="#3AADE0"/>
+    </svg>
+  </div>
+  <div id="stream"></div>
+  <div class="wave-divider" style="margin-top:-2px;z-index:14;">
+    <svg viewBox="0 0 360 22" preserveAspectRatio="none" height="22">
+      <path d="M0,11 Q45,22 90,11 T180,11 T270,11 T360,11 L360,0 L0,0Z" fill="#6BBF58"/>
+    </svg>
+  </div>
+
+  <div id="lower-field">
+    <!-- Animals/critters injected per round -->
+    <div id="drop-zone">5</div>
+    <div id="count-hint"><br></div>
+    <div id="beetle">🐞</div>
+
+    <div id="success-overlay">
+      <div class="success-ring">
+        <div class="success-number" id="success-number">5</div>
+        <div class="success-emojis" id="success-emojis">🎉 ⭐ 🎉</div>
+        <button class="next-btn" onclick="nextRound()">Következő →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tiles-layer"></div>
+</div>
+
+<!-- ═══ STATS SCREEN ═════════════════════════════════ -->
+<div id="stats-screen" class="screen">
+  <div class="stats-hero">🏅</div>
+  <div class="stats-title">Kész!</div>
+  <div class="stats-sub">Így ment:</div>
+  <div class="stats-total" id="stats-total">⭐ 0 / 30 csillag</div>
+  <div class="stats-list" id="stats-list"></div>
+  <button class="play-again-btn" onclick="restartGame()">Újra! 🔄</button>
+</div>
+
+<script>
+/* ──────────────────────────────────────────────────────
+   CRITTER POOLS
+   Each number maps to a pool of emoji sets.
+   A random set is picked each round — keeps it fresh.
+────────────────────────────────────────────────────── */
+const CRITTER_POOLS = {
+  1:  [['🐘'],['🦁'],['🐸'],['🐙'],['🦋']],
+  2:  [['🐝','🐝'],['🦊','🦊'],['🐢','🐢'],['🐧','🐧'],['🦄','🦄']],
+  3:  [['🐛','🐛','🐛'],['🐠','🐠','🐠'],['🐸','🐸','🐸'],['🐞','🐞','🐞'],['🦅','🦅','🦅']],
+  4:  [['🐝','🐝','🐝','🐝'],['🐰','🐰','🐰','🐰'],['🦆','🦆','🦆','🦆'],['🐸','🐸','🐸','🐸'],['🌸','🌸','🌸','🌸']],
+  5:  [['🐞','🐞','🐞','🐞','🐞'],['🐥','🐥','🐥','🐥','🐥'],['🦋','🦋','🦋','🦋','🦋'],['🐟','🐟','🐟','🐟','🐟'],['🌼','🌼','🌼','🌼','🌼']],
+  6:  [['🐛','🐛','🐛','🐛','🐛','🐛'],['🐠','🐠','🐠','🐠','🐠','🐠'],['🐝','🐝','🐝','🐝','🐝','🐝'],['🐸','🐸','🐸','🐸','🐸','🐸'],['🍄','🍄','🍄','🍄','🍄','🍄']],
+  7:  [['🐦','🐦','🐦','🐦','🐦','🐦','🐦'],['🌷','🌷','🌷','🌷','🌷','🌷','🌷'],['🐝','🐝','🐝','🐝','🐝','🐝','🐝'],['🦎','🦎','🦎','🦎','🦎','🦎','🦎'],['🐞','🐞','🐞','🐞','🐞','🐞','🐞']],
+  8:  [['🐌','🐌','🐌','🐌','🐌','🐌','🐌','🐌'],['🌻','🌻','🌻','🌻','🌻','🌻','🌻','🌻'],['🐢','🐢','🐢','🐢','🐢','🐢','🐢','🐢'],['🦗','🦗','🦗','🦗','🦗','🦗','🦗','🦗'],['🐇','🐇','🐇','🐇','🐇','🐇','🐇','🐇']],
+  9:  [['🐛','🐛','🐛','🐛','🐛','🐛','🐛','🐛','🐛'],['🌺','🌺','🌺','🌺','🌺','🌺','🌺','🌺','🌺'],['🐝','🐝','🐝','🐝','🐝','🐝','🐝','🐝','🐝'],['🐟','🐟','🐟','🐟','🐟','🐟','🐟','🐟','🐟'],['🦋','🦋','🦋','🦋','🦋','🦋','🦋','🦋','🦋']],
+  10: [['🐞','🐞','🐞','🐞','🐞','🐞','🐞','🐞','🐞','🐞'],['🌼','🌼','🌼','🌼','🌼','🌼','🌼','🌼','🌼','🌼'],['🦆','🦆','🦆','🦆','🦆','🦆','🦆','🦆','🦆','🦆'],['🐠','🐠','🐠','🐠','🐠','🐠','🐠','🐠','🐠','🐠'],['🐥','🐥','🐥','🐥','🐥','🐥','🐥','🐥','🐥','🐥']],
+};
+
+/* Hungarian number names for speech */
+const HU_NUMBERS = {1:'egy',2:'kettő',3:'három',4:'négy',5:'öt',6:'hat',7:'hét',8:'nyolc',9:'kilenc',10:'tíz'};
+
+/* ──────────────────────────────────────────────────────
+   STATE
+────────────────────────────────────────────────────── */
+let roundSequence = [];   // 10 numbers (1–10, shuffled, guaranteed each appears once)
+let roundIdx  = 0;
+let tries     = 0;
+let stats     = [];
+let animating = false;
+let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
+
+/* ──────────────────────────────────────────────────────
+   INIT
+────────────────────────────────────────────────────── */
+function init() {
+  roundSequence = shuffle([1,2,3,4,5,6,7,8,9,10]);
+  roundIdx = 0; tries = 0; stats = [];
+  buildDecorations();
+  buildStreamCreatures();
+  loadRound();
+  showScreen('game-screen');
+}
+
+function buildDecorations() {
+  ['upper-field','lower-field'].forEach(id =>
+    document.getElementById(id).querySelectorAll('.deco,.grass-critter').forEach(d => d.remove()));
+
+  /* Upper field: sky decos */
+  [
+    {e:'☁️',t:'7%', l:'6%', s:46,z:2},{e:'☁️',t:'4%', l:'36%',s:58,z:2},
+    {e:'☁️',t:'9%', r:'22%',s:38,z:2},{e:'🌸',t:'44%',l:'5%', s:28,z:3},
+    {e:'🌼',t:'58%',l:'18%',s:22,z:3},{e:'🌺',t:'42%',l:'40%',s:26,z:3},
+    {e:'🌻',t:'52%',l:'55%',s:24,z:3},{e:'🦋',t:'34%',l:'30%',s:20,z:4},
+  ].forEach(d => {
+    const el = makeDeco(d); el.style.zIndex = d.z||3;
+    document.getElementById('upper-field').appendChild(el);
+  });
+
+  /* Lower field: right-side static flowers (avoid left zone where critters go) */
+  [
+    {e:'🌸',t:'22%',r:'22%',s:22},{e:'🌼',t:'55%',r:'36%',s:18},
+    {e:'🌺',t:'15%',r:'12%',s:20},{e:'🍀',t:'65%',r:'50%',s:16},
+  ].forEach(d => document.getElementById('lower-field').appendChild(makeDeco(d)));
+}
+
+function makeDeco(d) {
+  const el = document.createElement('div');
+  el.className='deco'; el.textContent=d.e; el.style.fontSize=d.s+'px';
+  if(d.t) el.style.top=d.t; if(d.l) el.style.left=d.l; if(d.r) el.style.right=d.r;
+  return el;
+}
+
+function buildStreamCreatures() {
+  const stream = document.getElementById('stream');
+  stream.querySelectorAll('.stream-creature').forEach(c=>c.remove());
+  [{e:'🐟',top:'22%',dur:9, delay:0,dir:'left'},{e:'🐠',top:'58%',dur:13,delay:3,dir:'left'},
+   {e:'🐡',top:'35%',dur:7, delay:6,dir:'right'},{e:'🦆',top:'15%',dur:11,delay:1,dir:'left'}]
+  .forEach(c => {
+    const el = document.createElement('div');
+    el.className='stream-creature deco'; el.textContent=c.e;
+    el.style.top=c.top; el.style.fontSize='20px';
+    el.style.animation=`${c.dir==='left'?'swimLeft':'swimRight'} ${c.dur}s ${c.delay}s linear infinite`;
+    stream.appendChild(el);
+  });
+}
+
+/* ──────────────────────────────────────────────────────
+   LOAD ROUND
+────────────────────────────────────────────────────── */
+function loadRound() {
+  const target = roundSequence[roundIdx];
+  tries = 0; animating = false;
+
+  document.getElementById('round-num').textContent = roundIdx + 1;
+  document.getElementById('success-overlay').classList.remove('show');
+  document.getElementById('beetle').classList.remove('celebrate','sad');
+
+  /* Drop zone: faint hint number */
+  const dz = document.getElementById('drop-zone');
+  dz.textContent = target;
+  dz.className = '';   /* remove 'correct' */
+  dz.style.animation = '';
+  void dz.offsetWidth;
+  dz.style.animation = 'zonePulse 2s ease-in-out infinite';
+
+  /* Place critters on left bank */
+  placeCritters(target);
+
+  /* Spawn number tiles (1–10) on the RIGHT side of upper field */
+  document.querySelectorAll('.num-tile').forEach(t => t.remove());
+  spawnNumberTiles();
+}
+
+/* Scatter N critters across the left side of the lower field */
+function placeCritters(n) {
+  document.querySelectorAll('.grass-critter').forEach(c => c.remove());
+  const lower   = document.getElementById('lower-field');
+  const lRect   = lower.getBoundingClientRect();
+
+  /* Pick a random emoji set for this number */
+  const pool    = CRITTER_POOLS[n];
+  const emojis  = pool[Math.floor(Math.random() * pool.length)];
+
+  /* Available area: avoid the drop-zone (left ~130px) and beetle (right ~80px) and edges */
+  /* We place critters in the zone: x 130px → 78%, y 5% → 80% of lower-field */
+  const CRITTER_SIZE = n <= 5 ? 36 : n <= 7 ? 30 : 26;
+  const areaX1 = 135, areaX2 = lRect.width * 0.80;
+  const areaY1 = lRect.height * 0.06, areaY2 = lRect.height * 0.82;
+
+  const positions = poissonPositions(n, areaX1, areaX2, areaY1, areaY2, CRITTER_SIZE + 6);
+
+  emojis.forEach((emoji, i) => {
+    const el = document.createElement('div');
+    el.className = 'grass-critter';
+    el.textContent = emoji;
+    el.style.fontSize = CRITTER_SIZE + 'px';
+    el.style.left = positions[i].x + 'px';
+    el.style.top  = positions[i].y + 'px';
+    el.style.animationDelay = (i * 0.18) + 's';
+    el.style.animationDuration = (2.2 + Math.random() * 1.2) + 's';
+    lower.appendChild(el);
+  });
+}
+
+/* Simple rejection-sampling to avoid overlaps */
+function poissonPositions(n, x1, x2, y1, y2, minDist) {
+  const pts = [];
+  let attempts = 0;
+  while (pts.length < n && attempts < 2000) {
+    attempts++;
+    const x = x1 + Math.random() * (x2 - x1);
+    const y = y1 + Math.random() * (y2 - y1);
+    const ok = pts.every(p => Math.hypot(p.x - x, p.y - y) > minDist);
+    if (ok) pts.push({x, y});
+  }
+  /* Fallback: grid layout if rejection sampling fails */
+  while (pts.length < n) {
+    const i = pts.length;
+    const cols = Math.ceil(Math.sqrt(n));
+    const col = i % cols, row = Math.floor(i / cols);
+    pts.push({
+      x: x1 + col * ((x2 - x1) / cols) + 10,
+      y: y1 + row * ((y2 - y1) / Math.ceil(n / cols)) + 10,
+    });
+  }
+  return pts;
+}
+
+/* Spawn number tiles 1–10 on the RIGHT portion of the upper grass field */
+function spawnNumberTiles() {
+  const layer    = document.getElementById('tiles-layer');
+  const gameRect = document.getElementById('game-screen').getBoundingClientRect();
+  const upper    = document.getElementById('upper-field').getBoundingClientRect();
+
+  const TILE = 76, GAP = 10;
+  const numbers = shuffle([1,2,3,4,5,6,7,8,9,10]);
+
+  /* Five columns × 2 rows — horizontal band across the grass */
+  const cols = 5, rows = 2;
+  const gridW = cols * TILE + (cols - 1) * GAP;
+  const gridH = rows * TILE + (rows - 1) * GAP;
+
+  /* Grass starts at 28% of upper-field height */
+  const grassTop    = upper.top - gameRect.top + upper.height * 0.30;
+  const grassBottom = upper.bottom - gameRect.top - 6;
+  const availH      = grassBottom - grassTop;
+
+  const startX = (gameRect.width - gridW) / 2;              /* horizontally centred */
+  const startY = grassTop + (availH - gridH) / 2;
+
+  numbers.forEach((num, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const lx = startX + col * (TILE + GAP);
+    const ly = startY + row * (TILE + GAP);
+
+    const tile = document.createElement('div');
+    tile.className = 'num-tile';
+    tile.textContent = num;
+    tile.dataset.number = num;
+    tile.dataset.origL  = lx;
+    tile.dataset.origT  = ly;
+    tile.style.left = lx + 'px';
+    tile.style.top  = ly + 'px';
+    tile.style.zIndex = 60 + i;
+
+    tile.addEventListener('mousedown',  e => onDragStart(e, tile));
+    tile.addEventListener('touchstart', e => onDragStart(e, tile), { passive: false });
+    layer.appendChild(tile);
+  });
+}
+
+/* ──────────────────────────────────────────────────────
+   DRAG & DROP
+────────────────────────────────────────────────────── */
+function evtPos(e) { const s=e.touches?.[0]??e.changedTouches?.[0]??e; return {x:s.clientX,y:s.clientY}; }
+function gameOffset() { return document.getElementById('game-screen').getBoundingClientRect(); }
+
+function onDragStart(e, tile) {
+  if (animating || tile.classList.contains('used')) return;
+  e.preventDefault();
+  const pos=evtPos(e), rect=tile.getBoundingClientRect();
+  drag = { on:true, tile, ox:pos.x-rect.left, oy:pos.y-rect.top,
+    origL:parseFloat(tile.dataset.origL), origT:parseFloat(tile.dataset.origT) };
+  tile.classList.add('grabbed');
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup',   onDragEnd);
+  document.addEventListener('touchmove', onDragMove, {passive:false});
+  document.addEventListener('touchend',  onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!drag.on) return;
+  e.preventDefault();
+  const pos=evtPos(e), gr=gameOffset();
+  drag.tile.style.left = (pos.x-gr.left-drag.ox)+'px';
+  drag.tile.style.top  = (pos.y-gr.top -drag.oy)+'px';
+}
+
+function onDragEnd(e) {
+  if (!drag.on) return;
+  drag.on = false;
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup',   onDragEnd);
+  document.removeEventListener('touchmove', onDragMove);
+  document.removeEventListener('touchend',  onDragEnd);
+
+  const tile = drag.tile;
+  tile.classList.remove('grabbed');
+
+  const tRect = tile.getBoundingClientRect();
+  const dRect = document.getElementById('drop-zone').getBoundingClientRect();
+  const dist  = Math.hypot(
+    (tRect.left+tRect.width/2)  - (dRect.left+dRect.width/2),
+    (tRect.top +tRect.height/2) - (dRect.top +dRect.height/2)
+  );
+
+  if (dist < 72) {
+    tries++;
+    if (parseInt(tile.dataset.number) === roundSequence[roundIdx]) {
+      animating = true;
+      lockAllTiles();
+      animateCorrect(tile, dRect);
+    } else {
+      animateWrong(tile);
+    }
+  } else {
+    snapBack(tile);
+  }
+}
+
+function lockAllTiles()   { document.querySelectorAll('.num-tile:not(.used)').forEach(t=>t.style.pointerEvents='none'); }
+function unlockAllTiles() { document.querySelectorAll('.num-tile:not(.used)').forEach(t=>t.style.pointerEvents=''); }
+
+/* ──────────────────────────────────────────────────────
+   ANIMATIONS
+────────────────────────────────────────────────────── */
+function snapBack(tile) {
+  tile.style.transition='left .35s cubic-bezier(.34,1.56,.64,1),top .35s cubic-bezier(.34,1.56,.64,1)';
+  tile.style.left=drag.origL+'px'; tile.style.top=drag.origT+'px';
+  after(380, ()=>tile.style.transition='');
+}
+
+function animateCorrect(tile, dRect) {
+  const gr   = gameOffset();
+  const destL = dRect.left-gr.left+(dRect.width -76)/2;
+  const destT = dRect.top -gr.top +(dRect.height-76)/2;
+
+  setTrans(tile,'left .5s cubic-bezier(.34,1.56,.64,1),top .5s cubic-bezier(.34,1.56,.64,1),transform .4s ease');
+  tile.style.left=destL+'px'; tile.style.top=destT+'px'; tile.style.transform='scale(1.15)';
+
+  after(520, ()=>{
+    tile.style.transform='scale(1)';
+    tile.style.zIndex='7';
+
+    /* Fill drop zone */
+    const dz=document.getElementById('drop-zone');
+    dz.style.animation='none';
+    dz.classList.add('correct');
+
+    /* Critters do a happy bounce */
+    document.querySelectorAll('.grass-critter').forEach((c,i)=>{
+      c.style.animation='none';
+      after(i*40, ()=>{
+        c.style.transition='transform .25s cubic-bezier(.34,1.56,.64,1)';
+        c.style.transform='scale(1.4) translateY(-8px)';
+        after(260, ()=>{ c.style.transform='scale(1) translateY(0)'; });
+      });
+    });
+
+    launchConfetti();
+    beetleReact('celebrate');
+    speakNumber(roundSequence[roundIdx]);
+
+    const target = roundSequence[roundIdx];
+    const critterEmoji = document.querySelector('.grass-critter')?.textContent ?? '🎉';
+    document.getElementById('success-number').textContent = target;
+    document.getElementById('success-emojis').textContent =
+      Array.from({length: Math.min(target,5)}, ()=>critterEmoji).join('') + ' ⭐';
+
+    after(360, ()=>document.getElementById('success-overlay').classList.add('show'));
+  });
+}
+
+function animateWrong(tile) {
+  animating = true; lockAllTiles();
+  beetleReact('sad'); speakWrong();
+
+  const gr      = gameOffset();
+  const sRect   = document.getElementById('stream').getBoundingClientRect();
+  const streamY = sRect.top+sRect.height/2-gr.top-38;
+  const curL    = parseFloat(tile.style.left);
+
+  setTrans(tile,'left .15s ease,top .38s cubic-bezier(.5,-.1,.9,.8),transform .4s ease');
+  tile.style.top=streamY+'px'; tile.style.transform='rotate(28deg) scale(0.82)';
+
+  after(430, ()=>{
+    setTrans(tile,'left .4s ease,top .22s ease,transform .3s ease');
+    tile.style.transform='rotate(-18deg) scale(0.82)'; tile.style.top=(streamY+10)+'px';
+    after(300, ()=>{
+      setTrans(tile,'left .5s ease,top .25s ease,transform .25s ease');
+      tile.style.left=Math.max(curL-70,-10)+'px'; tile.style.transform='rotate(8deg) scale(0.82)';
+      after(520, ()=>{
+        setTrans(tile,'left .45s cubic-bezier(.34,1.56,.64,1),top .45s cubic-bezier(.34,1.56,.64,1),transform .3s ease');
+        tile.style.left=drag.origL+'px'; tile.style.top=drag.origT+'px'; tile.style.transform='';
+        after(480, ()=>{ tile.style.transition=''; animating=false; unlockAllTiles(); });
+      });
+    });
+  });
+}
+
+/* ──────────────────────────────────────────────────────
+   CONFETTI
+────────────────────────────────────────────────────── */
+function launchConfetti() {
+  const canvas=document.getElementById('confetti-canvas');
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  const ctx=canvas.getContext('2d');
+  const COLS=['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF922B','#C77DFF','#FF85A1'];
+  const pieces=Array.from({length:110},()=>({
+    x:Math.random()*canvas.width,y:-15-Math.random()*50,
+    vx:(Math.random()-.5)*8,vy:Math.random()*5+2,g:.13,
+    w:Math.random()*12+5,h:Math.random()*6+4,
+    r:Math.random()*360,rs:(Math.random()-.5)*15,
+    c:COLS[Math.random()*COLS.length|0],
+  }));
+  let f=0,MAX=160;
+  (function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;p.vx*=.99;p.r+=p.rs;
+      ctx.save();ctx.globalAlpha=f<MAX-40?1:(MAX-f)/40;
+      ctx.translate(p.x,p.y);ctx.rotate(p.r*Math.PI/180);
+      ctx.fillStyle=p.c;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();
+    });
+    if(++f<MAX) requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  })();
+}
+
+/* ──────────────────────────────────────────────────────
+   FLOW
+────────────────────────────────────────────────────── */
+function nextRound() {
+  const critterEmoji = document.querySelector('.grass-critter')?.textContent ?? '⭐';
+  stats.push({ n:roundSequence[roundIdx], emoji:critterEmoji, tries });
+  roundIdx++;
+  if (roundIdx >= 10) { showStats(); return; }
+  document.getElementById('success-overlay').classList.remove('show');
+  document.querySelectorAll('.num-tile').forEach(t=>{t.style.transition='opacity .2s ease';t.style.opacity='0';});
+  document.querySelectorAll('.grass-critter').forEach(c=>{c.style.transition='opacity .2s ease';c.style.opacity='0';});
+  after(220, ()=>{
+    document.querySelectorAll('.num-tile').forEach(t=>t.remove());
+    document.querySelectorAll('.grass-critter').forEach(c=>c.remove());
+    loadRound();
+  });
+}
+
+function showStats() {
+  showScreen('stats-screen');
+  const list=document.getElementById('stats-list'); list.innerHTML=''; let total=0;
+  stats.forEach((s,i)=>{
+    const stars=s.tries===1?3:s.tries===2?2:1; total+=stars;
+    const critters=Array.from({length:Math.min(s.n,8)},()=>s.emoji).join('');
+    const row=document.createElement('div');
+    row.className='stat-row'; row.style.animationDelay=(i*.06)+'s';
+    row.innerHTML=`
+      <span class="stat-num">${s.n}</span>
+      <span class="stat-critters">${critters}</span>
+      <span class="stat-tries">${s.tries===1?'🎯 Elsőre!':s.tries+' próba'}</span>
+      <span class="stat-stars">${'⭐'.repeat(stars)}${'☆'.repeat(3-stars)}</span>`;
+    list.appendChild(row);
+  });
+  document.getElementById('stats-total').textContent=`⭐ ${total} / 30 csillag`;
+}
+
+function restartGame() {
+  document.querySelectorAll('.num-tile,.grass-critter').forEach(t=>t.remove());
+  init();
+}
+
+/* ──────────────────────────────────────────────────────
+   SPEECH
+────────────────────────────────────────────────────── */
+function getHuVoice() { return (window.speechSynthesis?.getVoices()??[]).find(v=>v.lang.startsWith('hu'))??null; }
+
+function speakNumber(n) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(HU_NUMBERS[n]);
+  u.rate=0.78; u.pitch=1.15; u.volume=1;
+  const v=getHuVoice(); if(v){u.voice=v;u.lang=v.lang;}else{u.lang='hu-HU';}
+  window.speechSynthesis.speak(u);
+}
+
+function speakWrong() {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const phrases = ['nem jó!', 'ajajj!', 'nem-nem!', 'jujujj!'];
+  const u=new SpeechSynthesisUtterance(phrases[Math.floor(Math.random()*phrases.length)]);
+  u.rate=0.82; u.pitch=1.3; u.volume=1;
+  const v=getHuVoice(); if(v){u.voice=v;u.lang=v.lang;}else{u.lang='hu-HU';}
+  window.speechSynthesis.speak(u);
+}
+
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();
+}
+
+/* ──────────────────────────────────────────────────────
+   BEETLE
+────────────────────────────────────────────────────── */
+function beetleReact(mood) {
+  const b=document.getElementById('beetle');
+  b.classList.remove('celebrate','sad'); void b.offsetWidth; b.classList.add(mood);
+  after(mood==='celebrate'?99999:1600, ()=>b.classList.remove(mood));
+}
+
+/* ──────────────────────────────────────────────────────
+   UTILS
+────────────────────────────────────────────────────── */
+function showScreen(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function after(ms,fn) { setTimeout(fn,ms); }
+function setTrans(el,t) { el.style.transition=t; }
+function shuffle(arr) { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function goBackHome() { if(window.androidBack){window.androidBack();return;} history.back(); }
+
+window.addEventListener('load', init);
+window.addEventListener('resize', ()=>{ document.querySelectorAll('.num-tile').forEach(t=>t.remove()); spawnNumberTiles(); });
+</script>
+</body>
+</html>
