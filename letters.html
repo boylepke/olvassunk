@@ -5,6 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Learning Letters · Little Sprouts</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+  <!-- ⚡ Runs synchronously before first paint — eliminates any flash of unsized layout -->
+  <script>
+    (function(){
+      var vw=window.innerWidth, vh=window.innerHeight, r=document.documentElement;
+      var tile    = Math.round(Math.max(56, Math.min(vw*0.21, vh*0.12, 110)));
+      var outline = Math.round(tile*1.08);
+      r.style.setProperty('--tile-sz',    tile+'px');
+      r.style.setProperty('--tile-fs',    Math.round(tile*0.55)+'px');
+      r.style.setProperty('--outline-sz', outline+'px');
+      r.style.setProperty('--outline-fs', Math.round(outline*0.58)+'px');
+      r.style.setProperty('--hint-left',  (outline+28)+'px');
+      r.style.setProperty('--stream-h',   Math.round(Math.min(vh*0.09,100))+'px');
+      r.style.setProperty('--bank-h',     Math.round(Math.min(vh*0.34,340))+'px');
+      r.style.setProperty('--beetle-fs',  Math.round(Math.min(tile*0.74,80))+'px');
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

@@ -5,6 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Building Words · Little Sprouts</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+  <!-- ⚡ Runs synchronously before first paint — eliminates any flash of unsized layout -->
+  <script>
+    (function(){
+      var vw=window.innerWidth, vh=window.innerHeight, r=document.documentElement;
+      // Default to wordLen=4; applySlotSize() will fine-tune per actual word later
+      var wordLen=4, maxW=vw*0.86;
+      var gap      = Math.max(3, Math.min(6, Math.floor(12/wordLen)));
+      var slotSize = Math.max(30, Math.min(52, Math.floor((maxW - gap*(wordLen-1)) / wordLen)));
+      var tileSize = Math.min(76, Math.round(slotSize*1.45));
+      r.style.setProperty('--slot-sz',  slotSize+'px');
+      r.style.setProperty('--slot-fs',  Math.round(slotSize*0.58)+'px');
+      r.style.setProperty('--slot-gap', gap+'px');
+      r.style.setProperty('--tile-sz',  tileSize+'px');
+      r.style.setProperty('--tile-fs',  Math.round(tileSize*0.54)+'px');
+      r.style.setProperty('--stream-h', Math.round(Math.min(vh*0.09,100))+'px');
+      r.style.setProperty('--bank-h',   Math.round(Math.min(vh*0.34,340))+'px');
+      r.style.setProperty('--beetle-fs',Math.round(Math.min(tileSize*0.74,80))+'px');
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width:100%; height:100%; overflow:hidden; user-select:none; -webkit-user-select:none; font-family:'Nunito',sans-serif; background:#87CEEB; }

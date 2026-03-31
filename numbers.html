@@ -5,6 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Learning Numbers · Little Sprouts</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+  <!-- ⚡ Runs synchronously before first paint — eliminates any flash of unsized layout -->
+  <script>
+    (function(){
+      var vw=window.innerWidth, vh=window.innerHeight, r=document.documentElement;
+      var tile = Math.round(Math.max(52, Math.min(vw*0.21, vh*0.12, 110)));
+      var zone = Math.round(tile*1.18);
+      r.style.setProperty('--tile-sz',   tile+'px');
+      r.style.setProperty('--tile-fs',   Math.round(tile*0.60)+'px');
+      r.style.setProperty('--zone-sz',   zone+'px');
+      r.style.setProperty('--zone-fs',   Math.round(zone*0.68)+'px');
+      r.style.setProperty('--hint-left', (zone+28)+'px');
+      r.style.setProperty('--stream-h',  Math.round(Math.min(vh*0.09,100))+'px');
+      r.style.setProperty('--bank-h',    Math.round(Math.min(vh*0.35,340))+'px');
+      r.style.setProperty('--beetle-fs', Math.round(Math.min(tile*0.74,80))+'px');
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
     html, body { width:100%; height:100%; overflow:hidden; user-select:none; -webkit-user-select:none; font-family:'Nunito',sans-serif; background:#87CEEB; }
@@ -386,9 +402,11 @@ function placeCritters(n) {
 
   /* Available area: avoid the drop-zone (left ~130px) and beetle (right ~80px) and edges */
   /* We place critters in the zone: x 130px → 78%, y 5% → 80% of lower-field */
-  const tile        = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 76;
+  const tile         = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 76;
   const CRITTER_SIZE = Math.round(Math.max(20, Math.min(tile * 0.5, n <= 5 ? 36 : n <= 7 ? 30 : 26)));
-  const areaX1 = 135, areaX2 = lRect.width * 0.80;
+  const zoneSz       = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--zone-sz')) || 90;
+  const areaX1 = zoneSz + 28;           /* clear the drop zone + a small gap */
+  const areaX2 = lRect.width * 0.80;
   const areaY1 = lRect.height * 0.06, areaY2 = lRect.height * 0.82;
 
   const positions = poissonPositions(n, areaX1, areaX2, areaY1, areaY2, CRITTER_SIZE + 6);
