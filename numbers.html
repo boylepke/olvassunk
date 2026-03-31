@@ -212,7 +212,7 @@
 
   <div id="lower-field">
     <!-- Animals/critters injected per round -->
-    <div id="drop-zone">5</div>
+    <div id="drop-zone"></div>
     <div id="count-hint"><br></div>
     <div id="beetle">🐞</div>
 
@@ -338,7 +338,7 @@ function loadRound() {
 
   /* Drop zone: faint hint number */
   const dz = document.getElementById('drop-zone');
-  dz.textContent = target;
+  dz.textContent = '';  /* no hint number shown */
   dz.className = '';   /* remove 'correct' */
   dz.style.animation = '';
   void dz.offsetWidth;
