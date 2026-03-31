@@ -2,15 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Learning Letters · Little Sprouts</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
-  <!-- ⚡ Runs synchronously before first paint — eliminates any flash of unsized layout -->
   <script>
+    /* ⚡ Synchronous pre-paint scale — runs before first pixel is drawn */
     (function(){
-      var vw=window.innerWidth, vh=window.innerHeight, r=document.documentElement;
-      var tile    = Math.round(Math.max(56, Math.min(vw*0.21, vh*0.12, 110)));
-      var outline = Math.round(tile*1.08);
+      var vw=window.innerWidth,
+          vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight,
+          r=document.documentElement;
+      var tile=Math.round(Math.max(56,Math.min(vw*0.21,vh*0.12,110)));
+      var outline=Math.round(tile*1.08);
       r.style.setProperty('--tile-sz',    tile+'px');
       r.style.setProperty('--tile-fs',    Math.round(tile*0.55)+'px');
       r.style.setProperty('--outline-sz', outline+'px');
@@ -44,7 +46,7 @@
     /* ══════════════════════════════════════════════════
        GAME SCREEN
     ══════════════════════════════════════════════════ */
-    #game-screen { overflow: hidden; }
+    #game-screen { overflow: hidden; padding-bottom: env(safe-area-inset-bottom, 0px); }
 
     /* ── Upper field: sky + grass ─────────────────── */
     #upper-field {
@@ -299,6 +301,7 @@
       align-items: center;
       justify-content: center;
       gap: 18px;
+      background: rgba(0,0,0,0.08);
     }
     #success-overlay.show { display: flex; }
 
@@ -483,18 +486,18 @@
     <div id="match-hint"><span></span></div>
     <div id="beetle">🐞</div>
     <!-- Flowers injected by JS -->
-
-    <!-- Success overlay -->
-    <div id="success-overlay">
-      <div class="success-ring">
-        <div class="success-emojis">🎉 ⭐ 🎉</div>
-        <button class="next-btn" id="next-btn" onclick="nextRound()">Next Round →</button>
-      </div>
-    </div>
   </div>
 
   <!-- Tiles floating layer (spans full game-screen) -->
   <div id="tiles-layer"></div>
+
+  <!-- Success overlay — full-screen so button is always centred & visible -->
+  <div id="success-overlay">
+    <div class="success-ring">
+      <div class="success-emojis">🎉 ⭐ 🎉</div>
+      <button class="next-btn" id="next-btn" onclick="nextRound()">Next Round →</button>
+    </div>
+  </div>
 
 </div>
 
@@ -565,7 +568,7 @@ let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
 ────────────────────────────────────────────────── */
 function applyScale() {
   const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
   const r  = document.documentElement;
 
   // Tile: up to 21% of vw, 12% of vh, capped at 110px, min 56px

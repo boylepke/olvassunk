@@ -2,18 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Building Words · Little Sprouts</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
-  <!-- ⚡ Runs synchronously before first paint — eliminates any flash of unsized layout -->
   <script>
+    /* ⚡ Synchronous pre-paint scale — runs before first pixel is drawn */
     (function(){
-      var vw=window.innerWidth, vh=window.innerHeight, r=document.documentElement;
-      // Default to wordLen=4; applySlotSize() will fine-tune per actual word later
+      var vw=window.innerWidth,
+          vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight,
+          r=document.documentElement;
       var wordLen=4, maxW=vw*0.86;
-      var gap      = Math.max(3, Math.min(6, Math.floor(12/wordLen)));
-      var slotSize = Math.max(30, Math.min(52, Math.floor((maxW - gap*(wordLen-1)) / wordLen)));
-      var tileSize = Math.min(76, Math.round(slotSize*1.45));
+      var gap=Math.max(3,Math.min(6,Math.floor(12/wordLen)));
+      var slotSize=Math.max(30,Math.min(52,Math.floor((maxW-gap*(wordLen-1))/wordLen)));
+      var tileSize=Math.min(76,Math.round(slotSize*1.45));
       r.style.setProperty('--slot-sz',  slotSize+'px');
       r.style.setProperty('--slot-fs',  Math.round(slotSize*0.58)+'px');
       r.style.setProperty('--slot-gap', gap+'px');
@@ -32,7 +33,7 @@
     .screen.active { display:flex; }
 
     /* ══ SCENE ══════════════════════════════════════ */
-    #game-screen { overflow:hidden; }
+    #game-screen { overflow:hidden; padding-bottom: env(safe-area-inset-bottom, 0px); }
 
     #upper-field {
       flex:1; position:relative;
@@ -175,7 +176,7 @@
     @keyframes bsad { 0%{transform:translateY(-50%) rotate(0) scale(1)} 15%{transform:translateY(-44%) rotate(-14deg) scale(.92)} 35%{transform:translateY(-56%) rotate(10deg) scale(.95)} 55%{transform:translateY(-44%) rotate(-8deg) scale(.92)} 75%{transform:translateY(-50%) rotate(5deg) scale(.96)} 100%{transform:translateY(-50%) rotate(0) scale(1)} }
 
     /* ── Success ──────────────────────────────────────── */
-    #success-overlay { display:none; position:absolute; inset:0; z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:16px; }
+    #success-overlay { display:none; position:absolute; inset:0; z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:rgba(0,0,0,0.08); }
     #success-overlay.show { display:flex; }
     .success-ring {
       background:rgba(255,255,255,.18); backdrop-filter:blur(6px);
@@ -230,15 +231,17 @@
     </div>
     <div id="word-hint"></div>
     <div id="beetle">🐞</div>
-    <div id="success-overlay">
-      <div class="success-ring">
-        <div class="success-emojis">🎉 ⭐ 🎉</div>
-        <div class="success-word-label" id="success-label"></div>
-        <button class="next-btn" onclick="nextRound()">Következő →</button>
-      </div>
-    </div>
   </div>
   <div id="tiles-layer"></div>
+
+  <!-- Success overlay — full-screen so button is always centred & visible -->
+  <div id="success-overlay">
+    <div class="success-ring">
+      <div class="success-emojis">🎉 ⭐ 🎉</div>
+      <div class="success-word-label" id="success-label"></div>
+      <button class="next-btn" onclick="nextRound()">Következő →</button>
+    </div>
+  </div>
 </div>
 
 <div id="stats-screen" class="screen">
@@ -480,7 +483,7 @@ function getDistractors(word, count = 2) {
 ───────────────────────────────────────────────────── */
 function applySlotSize(wordLen) {
   const vw    = window.innerWidth;
-  const vh    = window.innerHeight;
+  const vh    = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
   const maxW  = vw * 0.86;
   const gap   = Math.max(3, Math.min(6, Math.floor(12 / wordLen)));
   const slotSize = Math.max(30, Math.min(52, Math.floor((maxW - gap * (wordLen - 1)) / wordLen)));
