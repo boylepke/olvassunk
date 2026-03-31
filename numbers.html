@@ -25,7 +25,7 @@
     .wave-divider svg { display:block; width:100%; }
 
     #stream {
-      flex-shrink:0; height:72px; position:relative;
+      flex-shrink:0; height:var(--stream-h, 72px); position:relative;
       background:#3AADE0; overflow:hidden; z-index:12;
     }
     #stream::before,#stream::after { content:''; position:absolute; inset:0; }
@@ -46,7 +46,7 @@
 
     /* ── Left bank ── */
     #lower-field {
-      flex-shrink:0; height:36vh; position:relative;
+      flex-shrink:0; height:var(--bank-h, 36vh); position:relative;
       background:linear-gradient(180deg,#6BBF58 0%,#59AB46 100%);
       overflow:visible;
     }
@@ -55,12 +55,12 @@
     #drop-zone {
       position:absolute;
       left:18px; bottom:14px;
-      width:90px; height:90px;
+      width:var(--zone-sz, 90px); height:var(--zone-sz, 90px);
       border-radius:22px;
       border:4px dashed rgba(255,255,255,0.5);
       display:flex; align-items:center; justify-content:center;
       font-family:'Fredoka One',cursive;
-      font-size:62px;
+      font-size:var(--zone-fs, 62px);
       color:rgba(255,255,255,0.3);
       z-index:6;
       animation:zonePulse 2s ease-in-out infinite;
@@ -79,7 +79,7 @@
 
     /* ── Count hint label ── */
     #count-hint {
-      position:absolute; left:120px; bottom:28px;
+      position:absolute; left:var(--hint-left, 120px); bottom:28px;
       font-family:'Fredoka One',cursive; font-size:14px;
       color:rgba(255,255,255,.72); pointer-events:none; z-index:6;
       line-height:1.35;
@@ -99,7 +99,7 @@
     /* ── Beetle (right side of lower field) ── */
     #beetle {
       position:absolute; right:14px; top:50%; transform:translateY(-50%);
-      font-size:58px; z-index:8; pointer-events:none;
+      font-size:var(--beetle-fs, 58px); z-index:8; pointer-events:none;
       animation:beetleIdle 3s ease-in-out infinite; transform-origin:center bottom;
     }
     @keyframes beetleIdle {
@@ -129,10 +129,10 @@
     #tiles-layer { position:absolute; inset:0; pointer-events:none; z-index:50; }
 
     .num-tile {
-      position:absolute; width:76px; height:76px;
+      position:absolute; width:var(--tile-sz, 76px); height:var(--tile-sz, 76px);
       background:#FFF8EE; border:3px solid #D9BC8E; border-radius:18px;
       display:flex; align-items:center; justify-content:center;
-      font-family:'Fredoka One',cursive; font-size:46px; color:#3A2F24;
+      font-family:'Fredoka One',cursive; font-size:var(--tile-fs, 46px); color:#3A2F24;
       cursor:grab; pointer-events:auto; touch-action:none;
       box-shadow:0 5px 0 #C0A060,0 7px 16px rgba(0,0,0,.16);
       transition:transform .1s ease,box-shadow .1s ease;
@@ -271,9 +271,31 @@ let animating = false;
 let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
 
 /* ──────────────────────────────────────────────────────
+   RESPONSIVE SCALE
+────────────────────────────────────────────────────── */
+function applyScale() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const r  = document.documentElement;
+
+  const tile = Math.round(Math.max(52, Math.min(vw * 0.21, vh * 0.12, 110)));
+  const zone = Math.round(tile * 1.18);
+
+  r.style.setProperty('--tile-sz',   tile + 'px');
+  r.style.setProperty('--tile-fs',   Math.round(tile * 0.60) + 'px');
+  r.style.setProperty('--zone-sz',   zone + 'px');
+  r.style.setProperty('--zone-fs',   Math.round(zone * 0.68) + 'px');
+  r.style.setProperty('--hint-left', (zone + 28) + 'px');
+  r.style.setProperty('--stream-h',  Math.round(Math.min(vh * 0.09, 100)) + 'px');
+  r.style.setProperty('--bank-h',    Math.round(Math.min(vh * 0.35, 340)) + 'px');
+  r.style.setProperty('--beetle-fs', Math.round(Math.min(tile * 0.74, 80)) + 'px');
+}
+
+/* ──────────────────────────────────────────────────────
    INIT
 ────────────────────────────────────────────────────── */
 function init() {
+  applyScale();
   roundSequence = shuffle([1,2,3,4,5,6,7,8,9,10]);
   roundIdx = 0; tries = 0; stats = [];
   buildDecorations();
@@ -364,7 +386,8 @@ function placeCritters(n) {
 
   /* Available area: avoid the drop-zone (left ~130px) and beetle (right ~80px) and edges */
   /* We place critters in the zone: x 130px → 78%, y 5% → 80% of lower-field */
-  const CRITTER_SIZE = n <= 5 ? 36 : n <= 7 ? 30 : 26;
+  const tile        = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 76;
+  const CRITTER_SIZE = Math.round(Math.max(20, Math.min(tile * 0.5, n <= 5 ? 36 : n <= 7 ? 30 : 26)));
   const areaX1 = 135, areaX2 = lRect.width * 0.80;
   const areaY1 = lRect.height * 0.06, areaY2 = lRect.height * 0.82;
 
@@ -413,7 +436,8 @@ function spawnNumberTiles() {
   const gameRect = document.getElementById('game-screen').getBoundingClientRect();
   const upper    = document.getElementById('upper-field').getBoundingClientRect();
 
-  const TILE = 76, GAP = 10;
+  const TILE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 76;
+  const GAP  = Math.round(TILE * 0.13);
   const numbers = shuffle([1,2,3,4,5,6,7,8,9,10]);
 
   /* Five columns × 2 rows — horizontal band across the grass */
@@ -523,8 +547,9 @@ function snapBack(tile) {
 
 function animateCorrect(tile, dRect) {
   const gr   = gameOffset();
-  const destL = dRect.left-gr.left+(dRect.width -76)/2;
-  const destT = dRect.top -gr.top +(dRect.height-76)/2;
+  const tSz  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 76;
+  const destL = dRect.left-gr.left+(dRect.width -tSz)/2;
+  const destT = dRect.top -gr.top +(dRect.height-tSz)/2;
 
   setTrans(tile,'left .5s cubic-bezier(.34,1.56,.64,1),top .5s cubic-bezier(.34,1.56,.64,1),transform .4s ease');
   tile.style.left=destL+'px'; tile.style.top=destT+'px'; tile.style.transform='scale(1.15)';
@@ -707,7 +732,11 @@ function shuffle(arr) { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=
 function goBackHome() { if(window.androidBack){window.androidBack();return;} history.back(); }
 
 window.addEventListener('load', init);
-window.addEventListener('resize', ()=>{ document.querySelectorAll('.num-tile').forEach(t=>t.remove()); spawnNumberTiles(); });
+window.addEventListener('resize', ()=>{
+  applyScale();
+  document.querySelectorAll('.num-tile').forEach(t=>t.remove());
+  spawnNumberTiles();
+});
 </script>
 </body>
 </html>

@@ -25,7 +25,7 @@
     .wave-divider svg { display:block; width:100%; }
 
     #stream {
-      flex-shrink:0; height:72px; position:relative;
+      flex-shrink:0; height:var(--stream-h, 72px); position:relative;
       background:#3AADE0; overflow:hidden; z-index:12;
     }
     #stream::before,#stream::after { content:''; position:absolute; inset:0; }
@@ -45,7 +45,7 @@
     @keyframes swimL { from{left:110%;transform:translateY(-50%) scaleX(-1)} to{left:-8%;transform:translateY(-50%) scaleX(-1)} }
 
     #lower-field {
-      flex-shrink:0; height:34vh; position:relative;
+      flex-shrink:0; height:var(--bank-h, 34vh); position:relative;
       background:linear-gradient(180deg,#6BBF58 0%,#59AB46 100%);
       overflow:visible;
     }
@@ -148,7 +148,7 @@
     }
 
     /* ── Beetle ──────────────────────────────────────── */
-    #beetle { position:absolute; right:6%; top:50%; transform:translateY(-50%); font-size:58px; z-index:8; pointer-events:none; animation:bidle 3s ease-in-out infinite; transform-origin:center bottom; }
+    #beetle { position:absolute; right:6%; top:50%; transform:translateY(-50%); font-size:var(--beetle-fs, 58px); z-index:8; pointer-events:none; animation:bidle 3s ease-in-out infinite; transform-origin:center bottom; }
     @keyframes bidle { 0%,100%{transform:translateY(-50%) rotate(-4deg) scale(1)} 50%{transform:translateY(-54%) rotate(4deg) scale(1.02)} }
     #beetle.celebrate { animation:bcelebrate .6s ease infinite; }
     @keyframes bcelebrate { 0%{transform:translateY(-50%) scale(1) rotate(0)} 20%{transform:translateY(-80%) scale(1.25) rotate(-12deg)} 40%{transform:translateY(-50%) scale(1.1) rotate(10deg)} 60%{transform:translateY(-72%) scale(1.2) rotate(-8deg)} 80%{transform:translateY(-50%) scale(1.05) rotate(6deg)} 100%{transform:translateY(-50%) scale(1) rotate(0)} }
@@ -460,19 +460,26 @@ function getDistractors(word, count = 2) {
    SLOT SIZE — scales with word length so it always fits
 ───────────────────────────────────────────────────── */
 function applySlotSize(wordLen) {
-  const maxW     = window.innerWidth * 0.86;
-  const gap      = Math.max(3, Math.min(6, Math.floor(12 / wordLen)));
+  const vw    = window.innerWidth;
+  const vh    = window.innerHeight;
+  const maxW  = vw * 0.86;
+  const gap   = Math.max(3, Math.min(6, Math.floor(12 / wordLen)));
   const slotSize = Math.max(30, Math.min(52, Math.floor((maxW - gap * (wordLen - 1)) / wordLen)));
   const slotFs   = Math.round(slotSize * 0.58);
   const tileSize = Math.min(76, Math.round(slotSize * 1.45));
   const tileFs   = Math.round(tileSize * 0.54);
 
   const root = document.documentElement;
-  root.style.setProperty('--slot-sz', slotSize + 'px');
-  root.style.setProperty('--slot-fs', slotFs   + 'px');
-  root.style.setProperty('--slot-gap', gap     + 'px');
-  root.style.setProperty('--tile-sz', tileSize + 'px');
-  root.style.setProperty('--tile-fs', tileFs   + 'px');
+  root.style.setProperty('--slot-sz',  slotSize + 'px');
+  root.style.setProperty('--slot-fs',  slotFs   + 'px');
+  root.style.setProperty('--slot-gap', gap      + 'px');
+  root.style.setProperty('--tile-sz',  tileSize + 'px');
+  root.style.setProperty('--tile-fs',  tileFs   + 'px');
+
+  // Shared scene sizing
+  root.style.setProperty('--stream-h',  Math.round(Math.min(vh * 0.09, 100)) + 'px');
+  root.style.setProperty('--bank-h',    Math.round(Math.min(vh * 0.34, 340)) + 'px');
+  root.style.setProperty('--beetle-fs', Math.round(Math.min(tileSize * 0.74, 80)) + 'px');
 
   return { tileSize, tileFs };
 }
@@ -495,6 +502,7 @@ function init() {
   // Pick 10 unique random words from the pool for this session
   sessionWords = shuffle([...WORD_POOL]).slice(0, 10);
   roundIdx = 0; tries = 0; stats = [];
+  applySlotSize(4);   // pre-warm scene CSS vars before first paint
   buildDecorations();
   buildStreamCreatures();
   loadRound();

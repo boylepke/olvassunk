@@ -56,7 +56,7 @@
     /* ── Stream ────────────────────────────────────── */
     #stream {
       flex-shrink: 0;
-      height: 72px;
+      height: var(--stream-h, 72px);
       position: relative;
       background: #3AADE0;
       overflow: hidden;
@@ -104,7 +104,7 @@
     /* ── Lower field: left bank ────────────────────── */
     #lower-field {
       flex-shrink: 0;
-      height: 33vh;
+      height: var(--bank-h, 33vh);
       position: relative;
       background: linear-gradient(180deg, #6BBF58 0%, #59AB46 100%);
       overflow: visible;
@@ -113,17 +113,17 @@
     /* ── Target outline ────────────────────────────── */
     #target-outline {
       position: absolute;
-      left: 32px;
+      left: 18px;
       top: 50%;
       transform: translateY(-50%);
-      width: 86px; height: 86px;
+      width: var(--outline-sz, 86px); height: var(--outline-sz, 86px);
       border-radius: 20px;
       border: 4px dashed rgba(255,255,255,0.55);
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: 'Fredoka One', cursive;
-      font-size: 50px;
+      font-size: var(--outline-fs, 50px);
       color: rgba(255,255,255,0.35);
       z-index: 5;
       animation: outlinePulse 2s ease-in-out infinite;
@@ -144,7 +144,7 @@
     /* "Match this!" arrow hint */
     #match-hint {
       position: absolute;
-      left: 130px;
+      left: var(--hint-left, 130px);
       top: 50%;
       transform: translateY(-50%);
       font-family: 'Fredoka One', cursive;
@@ -169,7 +169,7 @@
     /* ── Letter tiles ──────────────────────────────── */
     .letter-tile {
       position: absolute;
-      width: 80px; height: 80px;
+      width: var(--tile-sz, 80px); height: var(--tile-sz, 80px);
       background: #FFF8EE;
       border: 3px solid #D9BC8E;
       border-radius: 18px;
@@ -177,7 +177,7 @@
       align-items: center;
       justify-content: center;
       font-family: 'Fredoka One', cursive;
-      font-size: 44px;
+      font-size: var(--tile-fs, 44px);
       color: #3A2F24;
       cursor: grab;
       pointer-events: auto;
@@ -236,7 +236,7 @@
       right: 18%;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 58px;
+      font-size: var(--beetle-fs, 58px);
       z-index: 8;
       pointer-events: none;
       transition: filter 0.2s ease;
@@ -544,7 +544,30 @@ let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
 /* ──────────────────────────────────────────────────
    INIT
 ────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────
+   RESPONSIVE SCALE — sets CSS vars from viewport size
+────────────────────────────────────────────────── */
+function applyScale() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const r  = document.documentElement;
+
+  // Tile: up to 21% of vw, 12% of vh, capped at 110px, min 56px
+  const tile    = Math.round(Math.max(56, Math.min(vw * 0.21, vh * 0.12, 110)));
+  const outline = Math.round(tile * 1.08);
+
+  r.style.setProperty('--tile-sz',    tile + 'px');
+  r.style.setProperty('--tile-fs',    Math.round(tile * 0.55) + 'px');
+  r.style.setProperty('--outline-sz', outline + 'px');
+  r.style.setProperty('--outline-fs', Math.round(outline * 0.58) + 'px');
+  r.style.setProperty('--hint-left',  (outline + 28) + 'px');
+  r.style.setProperty('--stream-h',   Math.round(Math.min(vh * 0.09, 100)) + 'px');
+  r.style.setProperty('--bank-h',     Math.round(Math.min(vh * 0.34, 340)) + 'px');
+  r.style.setProperty('--beetle-fs',  Math.round(Math.min(tile * 0.74, 80)) + 'px');
+}
+
 function init() {
+  applyScale();
   roundIdx = 0; tries = 0; stats = [];
   buildDecorations();
   buildStreamCreatures();
@@ -642,7 +665,8 @@ function spawnTiles(letters) {
   const upperRect  = upperField.getBoundingClientRect();
 
   // Place in a grid cluster, centred in grass area of upper field
-  const TILE = 80, GAP = 14;
+  const TILE = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 80;
+  const GAP  = Math.round(TILE * 0.17);
   const count = letters.length;
   const cols  = Math.ceil(Math.sqrt(count + 0.1));
   const rows  = Math.ceil(count / cols);
@@ -818,9 +842,10 @@ function animateWrong(tile) {
 }
 
 function animateCorrect(tile, oRect) {
-  const gr   = gameOffset();
-  const destL = oRect.left - gr.left + (oRect.width  - 80) / 2;
-  const destT = oRect.top  - gr.top  + (oRect.height - 80) / 2;
+  const gr    = gameOffset();
+  const tSz   = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 80;
+  const destL = oRect.left - gr.left + (oRect.width  - tSz) / 2;
+  const destT = oRect.top  - gr.top  + (oRect.height - tSz) / 2;
 
   // Swim across (slight bob via scale)
   setTrans(tile, 'left .5s cubic-bezier(.34,1.56,.64,1), top .5s cubic-bezier(.34,1.56,.64,1), transform .4s ease');
@@ -1026,7 +1051,7 @@ function goBackHome() {
 ────────────────────────────────────────────────── */
 window.addEventListener('load', init);
 window.addEventListener('resize', () => {
-  // Re-position tiles on orientation change
+  applyScale();
   document.querySelectorAll('.letter-tile').forEach(t => t.remove());
   spawnTiles(shuffle([ROUNDS[roundIdx].target, ...ROUNDS[roundIdx].distractors]));
 });
