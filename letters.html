@@ -659,6 +659,7 @@ function onLayoutChanged(){
     spawnTiles(shuffle([ROUNDS[roundIdx].target,...ROUNDS[roundIdx].distractors]));
 }
 function init(){
+  buildRounds();
   roundIdx=0; tries=0; stats=[];
   buildDecorations(); buildStreamCreatures();
   buildZoomBadge('game-screen');
