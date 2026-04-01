@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Olvassunk!</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700;800&subset=latin-ext&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700;800&subset=latin-ext&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -201,6 +201,19 @@
       font-size: 13px; color: var(--warm-mid);
       font-weight: 600; opacity: 0.7;
     }
+
+    /* ── Device selector badge (home) ── */
+    #device-badge {
+      position:fixed; top:14px; left:50%; transform:translateX(-50%);
+      z-index:200; background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
+      border-radius:50px; padding:5px 14px;
+      font-family:'Fredoka',cursive; font-size:13px; color:#3A4A2A;
+      cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.12);
+      transition:transform .12s ease, opacity .3s ease;
+      -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none;
+    }
+    #device-badge:active { transform:translateX(-50%) scale(0.9); }
+    #device-badge.faded  { opacity:0.28; }
   </style>
 </head>
 <body>
@@ -249,7 +262,7 @@
       <div class="card-body">
         <div class="card-num">3. modul</div>
         <div class="card-title">Számok tanulása</div>
-        <div class="card-desc">1-től 10-ig · Számojunk!</div>
+        <div class="card-desc">1-től 10-ig · Számold meg!</div>
         <div class="card-progress">
           <div class="prog-dot filled"></div>
           <div class="prog-dot filled"></div>
@@ -261,6 +274,29 @@
   </div>
 
 <script>
+
+  // ── Device badge ──────────────────────────────
+  (function(){
+    var ORDER=['phone','tablet','pc'];
+    var badge=document.createElement('div');
+    badge.id='device-badge';
+    function refresh(){ badge.textContent=window.LS_PROFILES[window.LS_currentDevice].label; }
+    refresh();
+    var ft;
+    function fade(){ ft=setTimeout(function(){ badge.classList.add('faded'); },4000); }
+    badge.addEventListener('click',function(){
+      var next=ORDER[(ORDER.indexOf(window.LS_currentDevice)+1)%ORDER.length];
+      window.LS_applyProfile(next);
+      try{localStorage.setItem('ls_device',next);}catch(e){}
+      refresh();
+      clearTimeout(ft); badge.classList.remove('faded'); fade();
+    });
+    badge.addEventListener('mouseenter',function(){ clearTimeout(ft); badge.classList.remove('faded'); });
+    badge.addEventListener('mouseleave',fade);
+    document.body.appendChild(badge);
+    fade();
+  })();
+
   // Navigate to a module HTML file
   function go(filename) {
     window.location.href = filename;
