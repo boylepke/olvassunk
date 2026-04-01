@@ -274,6 +274,7 @@
     }
 
 
+    #success-overlay { display: none; position:absolute; inset:0; z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:18px; background:rgba(0,0,0,0.08); }
     #success-overlay.show { display: flex; }
 
     .success-ring {
@@ -532,7 +533,7 @@
   <!-- Tiles floating layer -->
   <div id="tiles-layer"></div>
 
-  <div id="success-overlay" style="display:none;position:absolute;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(0,0,0,0.08);">
+  <div id="success-overlay">
     <div class="success-ring">
       <div class="success-emojis">🎉 ⭐ 🎉</div>
       <button class="next-btn" id="next-btn" onclick="nextRound()">Next Round →</button>

@@ -469,7 +469,9 @@ function placeCritters(n) {
   const tile        = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 76;
   const CRITTER_SIZE = Math.round(Math.max(20, Math.min(tile * 0.5, n <= 5 ? 36 : n <= 7 ? 30 : 26)));
   const _zsz=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--zone-sz'))||90;
-  const areaX1=_zsz+24, areaX2=lRect.width*0.80;
+  const _bfs = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--beetle-fs')) || 58;
+  const areaX1 = _zsz + 24;
+  const areaX2 = lRect.width - _bfs - 22;  /* leave room for beetle at right:14px */
   const areaY1 = lRect.height * 0.06, areaY2 = lRect.height * 0.82;
 
   const positions = poissonPositions(n, areaX1, areaX2, areaY1, areaY2, CRITTER_SIZE + 6);
