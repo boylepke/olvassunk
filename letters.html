@@ -2,41 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- DEVICE ADAPTER: auto-detect phone/tablet/pc, badge to override -->
-  <script>
-  (function(){
-    window.LS_PROFILES = {
-      phone:  { label:'\u{1F4F1} Telefon', tile:78,  outline:86,  zone:90,  stream:64, bank:0.33, beetle:54, slotMax:52, tileMax:76  },
-      tablet: { label:'\u{1F4DF} Tablet',  tile:100, outline:110, zone:114, stream:82, bank:0.36, beetle:70, slotMax:68, tileMax:96  },
-      pc:     { label:'\u{1F5A5}\uFE0F PC', tile:116, outline:128, zone:130, stream:96, bank:0.38, beetle:80, slotMax:80, tileMax:110 },
-    };
-    function detect(){
-      var s=Math.min(window.innerWidth,window.innerHeight), l=Math.max(window.innerWidth,window.innerHeight);
-      if(s>=768&&l>=1024) return 'pc';
-      if(s>=540)          return 'tablet';
-      return 'phone';
-    }
-    window.LS_applyProfile=function(dev){
-      var p=window.LS_PROFILES[dev];
-      var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
-      var r=document.documentElement;
-      r.setAttribute('data-device',dev);
-      r.style.setProperty('--tile-sz',    p.tile+'px');
-      r.style.setProperty('--tile-fs',    Math.round(p.tile*0.55)+'px');
-      r.style.setProperty('--outline-sz', p.outline+'px');
-      r.style.setProperty('--outline-fs', Math.round(p.outline*0.58)+'px');
-      r.style.setProperty('--zone-sz',    p.zone+'px');
-      r.style.setProperty('--zone-fs',    Math.round(p.zone*0.68)+'px');
-      r.style.setProperty('--hint-left',  (Math.max(p.outline,p.zone)+28)+'px');
-      r.style.setProperty('--stream-h',   p.stream+'px');
-      r.style.setProperty('--bank-h',     Math.round(Math.min(vh*p.bank,380))+'px');
-      r.style.setProperty('--beetle-fs',  p.beetle+'px');
-      window.LS_currentDevice=dev;
-    };
-    var saved=null; try{saved=localStorage.getItem('ls_device');}catch(e){}
-    window.LS_applyProfile((saved&&window.LS_PROFILES[saved])?saved:detect());
-  })();
-  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Learning Letters · Little Sprouts</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700;800&subset=latin-ext&display=swap" rel="stylesheet">
@@ -309,11 +274,6 @@
     }
 
 
-    #success-overlay {
-      display: none; position: absolute; inset: 0; z-index: 100;
-      flex-direction: column; align-items: center; justify-content: center;
-      gap: 18px; background: rgba(0,0,0,0.08);
-    }
     #success-overlay.show { display: flex; }
 
     .success-ring {
@@ -455,21 +415,76 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* ── Device selector badge ── */
-    #device-badge {
+    /* ── Zoom badge ── */
+    #zoom-badge {
       position:absolute; top:13px; left:50%; transform:translateX(-50%);
-      z-index:200; background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
-      border-radius:50px; padding:5px 14px;
-      font-family:'Fredoka',cursive; font-size:13px; color:#3A4A2A;
-      cursor:pointer; white-space:nowrap;
+      z-index:200; display:flex; gap:2px;
+      background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
+      border-radius:50px; padding:3px 4px;
       box-shadow:0 2px 8px rgba(0,0,0,0.12);
-      transition:transform .12s ease, opacity .3s ease;
-      -webkit-tap-highlight-color:transparent;
-      user-select:none; -webkit-user-select:none;
+      transition:opacity .3s ease;
     }
-    #device-badge:active { transform:translateX(-50%) scale(0.9); }
-    #device-badge.faded  { opacity:0.28; }
+    #zoom-badge.faded { opacity:0.22; }
+    .zb {
+      border:none; border-radius:50px; padding:4px 12px;
+      font-family:'Fredoka',cursive; font-size:14px; font-weight:600;
+      color:#3A4A2A; background:transparent; cursor:pointer;
+      -webkit-tap-highlight-color:transparent; user-select:none;
+      transition:background .15s,color .15s;
+    }
+    .zb.on { background:#3A4A2A; color:#fff; }
   </style>
+
+  <!-- LAYOUT ENGINE: geometry-first, no device profiles, zoom scalar -->
+  <script>
+  (function(){
+    /* Zoom scalar — 3 levels stored in localStorage 'ls_zoom' */
+    var ZS=[0.82,1.0,1.2];
+    window.LS_zoomIdx=1;
+    try{ var zi=parseInt(localStorage.getItem('ls_zoom')); if(zi>=0&&zi<ZS.length) window.LS_zoomIdx=zi; }catch(e){}
+
+    /* Core solver: derives every px value from actual viewport geometry */
+    window.LS_solve=function(){
+      var vw=window.innerWidth;
+      var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+      var z=ZS[window.LS_zoomIdx];
+      /* Scene structure */
+      var streamH=Math.max(Math.round(vh*0.075),48);
+      var bankH=Math.round(Math.max(Math.min(vh*0.33,360),160));
+      var upperH=vh-streamH-44-bankH;
+      var grassH=upperH*0.68;
+      /* Tile sizes — solve width & height constraints simultaneously */
+      var GAP_R=0.14;
+      var tByW=Math.floor(vw*0.90/(3+2*GAP_R));    /* letters: 3-col width  */
+      var tByH=Math.floor(grassH*0.88/(2+GAP_R));  /* 2-row height          */
+      var tile=Math.round(Math.min(tByW,tByH,118)*z);
+      var nByW=Math.floor(vw*0.94/(5+4*GAP_R));    /* numbers: 5-col width  */
+      var numTile=Math.round(Math.min(nByW,tByH,108)*z);
+      return {vw:vw,vh:vh,z:z,streamH:streamH,bankH:bankH,grassH:grassH,
+              tile:tile,numTile:numTile,
+              outline:Math.round(tile*1.08),zone:Math.round(numTile*1.18),
+              beetle:Math.round(Math.min(bankH*0.35,76)*z)};
+    };
+
+    /* Apply to CSS custom properties */
+    window.LS_applyLayout=function(){
+      var L=window.LS_solve(),r=document.documentElement;
+      r.style.setProperty('--stream-h',  L.streamH+'px');
+      r.style.setProperty('--bank-h',    L.bankH+'px');
+      r.style.setProperty('--tile-sz',   L.tile+'px');
+      r.style.setProperty('--tile-fs',   Math.round(L.tile*0.55)+'px');
+      r.style.setProperty('--outline-sz',L.outline+'px');
+      r.style.setProperty('--outline-fs',Math.round(L.outline*0.58)+'px');
+      r.style.setProperty('--zone-sz',   L.zone+'px');
+      r.style.setProperty('--zone-fs',   Math.round(L.zone*0.68)+'px');
+      r.style.setProperty('--hint-left', (Math.max(L.outline,L.zone)+28)+'px');
+      r.style.setProperty('--beetle-fs', L.beetle+'px');
+      window.LS_layout=L; return L;
+    };
+
+    window.LS_applyLayout();  /* run before first paint */
+  })();
+  </script>
 </head>
 <body>
 
@@ -514,11 +529,10 @@
     <!-- Flowers injected by JS -->
   </div>
 
-  <!-- Tiles floating layer (spans full game-screen) -->
+  <!-- Tiles floating layer -->
   <div id="tiles-layer"></div>
 
-  <!-- Success overlay at game-screen level -->
-  <div id="success-overlay">
+  <div id="success-overlay" style="display:none;position:absolute;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(0,0,0,0.08);">
     <div class="success-ring">
       <div class="success-emojis">🎉 ⭐ 🎉</div>
       <button class="next-btn" id="next-btn" onclick="nextRound()">Next Round →</button>
@@ -586,51 +600,44 @@ let animating  = false;
 /* drag state */
 let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
 
-/* ──────────────────────────────────────────────────
-   INIT
-────────────────────────────────────────────────── */
-/* ──────────────────────────────────────────────────
-   RESPONSIVE SCALE — sets CSS vars from viewport size
-────────────────────────────────────────────────── */
 
-/* ── Device badge ──────────────────────────── */
-function buildDeviceBadge(containerId) {
-  var ORDER=['phone','tablet','pc'];
-  var badge=document.createElement('div');
-  badge.id='device-badge';
-  function refresh(){ badge.textContent=window.LS_PROFILES[window.LS_currentDevice].label; }
-  refresh();
-  var ft;
-  function fade(){ ft=setTimeout(function(){ badge.classList.add('faded'); },4000); }
-  badge.addEventListener('click',function(){
-    var next=ORDER[(ORDER.indexOf(window.LS_currentDevice)+1)%ORDER.length];
-    window.LS_applyProfile(next);
-    try{localStorage.setItem('ls_device',next);}catch(e){}
-    refresh();
-    if(typeof onDeviceChanged==='function') onDeviceChanged();
-    clearTimeout(ft); badge.classList.remove('faded'); fade();
+/* ── Zoom badge: A− / A / A+ ── */
+function buildZoomBadge(cid){
+  var LABELS=['A\u2212','A','A+'];
+  var wrap=document.createElement('div'); wrap.id='zoom-badge';
+  LABELS.forEach(function(lbl,idx){
+    var btn=document.createElement('button');
+    btn.className='zb'+(idx===window.LS_zoomIdx?' on':'');
+    btn.textContent=lbl;
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      window.LS_zoomIdx=idx;
+      try{localStorage.setItem('ls_zoom',idx);}catch(x){}
+      wrap.querySelectorAll('.zb').forEach(function(b){b.classList.remove('on');});
+      btn.classList.add('on');
+      window.LS_applyLayout();
+      if(typeof onLayoutChanged==='function') onLayoutChanged();
+      clearTimeout(ft); wrap.classList.remove('faded'); sf();
+    });
+    wrap.appendChild(btn);
   });
-  badge.addEventListener('mouseenter',function(){ clearTimeout(ft); badge.classList.remove('faded'); });
-  badge.addEventListener('mouseleave',fade);
-  document.getElementById(containerId||'game-screen').appendChild(badge);
-  fade();
+  var ft; function sf(){ft=setTimeout(function(){wrap.classList.add('faded');},5000);}
+  wrap.addEventListener('mouseenter',function(){clearTimeout(ft);wrap.classList.remove('faded');});
+  wrap.addEventListener('mouseleave',sf);
+  document.getElementById(cid||'game-screen').appendChild(wrap);
+  sf();
 }
 
-/* ── onDeviceChanged: re-layout after profile switch ── */
-function onDeviceChanged() {
-  document.querySelectorAll('.letter-tile').forEach(t => t.remove());
-  if (typeof roundIdx !== 'undefined' && ROUNDS[roundIdx]) {
-    spawnTiles(shuffle([ROUNDS[roundIdx].target, ...ROUNDS[roundIdx].distractors]));
-  }
+function onLayoutChanged(){
+  document.querySelectorAll('.letter-tile').forEach(t=>t.remove());
+  if(typeof roundIdx!=='undefined'&&ROUNDS[roundIdx])
+    spawnTiles(shuffle([ROUNDS[roundIdx].target,...ROUNDS[roundIdx].distractors]));
 }
-
-function init() {
-  roundIdx = 0; tries = 0; stats = [];
-  buildDecorations();
-  buildStreamCreatures();
-  buildDeviceBadge('game-screen');
-  loadRound();
-  showScreen('game-screen');
+function init(){
+  roundIdx=0; tries=0; stats=[];
+  buildDecorations(); buildStreamCreatures();
+  buildZoomBadge('game-screen');
+  loadRound(); showScreen('game-screen');
 }
 
 function buildDecorations() {
@@ -722,17 +729,15 @@ function spawnTiles(letters) {
   const upperField = document.getElementById('upper-field');
   const upperRect  = upperField.getBoundingClientRect();
 
-  // Compute tile size to guarantee the widest row fits in 92% of screen width
-  const vw       = window.innerWidth;
-  const count    = letters.length;
-  const cols     = Math.ceil(Math.sqrt(count + 0.1));
-  const rows     = Math.ceil(count / cols);
-  const TILE_MAX = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 80;
-  const TILE_FIT = Math.floor(vw * 0.92 / (cols + (cols - 1) * 0.15));
-  const TILE     = Math.min(TILE_MAX, TILE_FIT);
-  const GAP      = Math.round(TILE * 0.15);
-  document.documentElement.style.setProperty('--tile-sz', TILE + 'px');
-  document.documentElement.style.setProperty('--tile-fs', Math.round(TILE * 0.55) + 'px');
+  const L=window.LS_layout||window.LS_solve();
+  const count=letters.length;
+  const cols=Math.ceil(Math.sqrt(count+0.1));
+  const rows=Math.ceil(count/cols);
+  const FIT=Math.floor(window.innerWidth*0.92/(cols+(cols-1)*0.14));
+  const TILE=Math.min(L.tile,FIT);
+  const GAP=Math.round(TILE*0.14);
+  document.documentElement.style.setProperty('--tile-sz',TILE+'px');
+  document.documentElement.style.setProperty('--tile-fs',Math.round(TILE*0.55)+'px');
   const gridW = cols * TILE + (cols - 1) * GAP;
   const gridH = rows * TILE + (rows - 1) * GAP;
 
@@ -906,7 +911,7 @@ function animateWrong(tile) {
 
 function animateCorrect(tile, oRect) {
   const gr    = gameOffset();
-  const tSz   = tile.getBoundingClientRect().width || 80;
+  const tSz   = tile.getBoundingClientRect().width||80;
   const destL = oRect.left - gr.left + (oRect.width  - tSz) / 2;
   const destT = oRect.top  - gr.top  + (oRect.height - tSz) / 2;
 
@@ -1112,15 +1117,10 @@ function goBackHome() {
 /* ──────────────────────────────────────────────────
    START
 ────────────────────────────────────────────────── */
-window.addEventListener('load', init);
-window.addEventListener('resize', () => {
-  const pinned = (function(){ try{ return localStorage.getItem('ls_device'); }catch(e){ return null; } })();
-  if (!pinned) {
-    var s=Math.min(window.innerWidth,window.innerHeight), l=Math.max(window.innerWidth,window.innerHeight);
-    var dev=(s>=768&&l>=1024)?'pc':(s>=540)?'tablet':'phone';
-    if (dev !== window.LS_currentDevice) window.LS_applyProfile(dev);
-  }
-  onDeviceChanged();
+window.addEventListener('load',init);
+window.addEventListener('resize',function(){
+  window.LS_applyLayout();
+  if(typeof onLayoutChanged==='function') onLayoutChanged();
 });
 </script>
 </body>

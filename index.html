@@ -202,19 +202,72 @@
       font-weight: 600; opacity: 0.7;
     }
 
-    /* ── Device selector badge (home) ── */
-    #device-badge {
+    #zoom-badge {
       position:fixed; top:14px; left:50%; transform:translateX(-50%);
-      z-index:200; background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
-      border-radius:50px; padding:5px 14px;
-      font-family:'Fredoka',cursive; font-size:13px; color:#3A4A2A;
-      cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.12);
-      transition:transform .12s ease, opacity .3s ease;
-      -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none;
+      z-index:200; display:flex; gap:2px;
+      background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
+      border-radius:50px; padding:3px 4px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.12); transition:opacity .3s ease;
     }
-    #device-badge:active { transform:translateX(-50%) scale(0.9); }
-    #device-badge.faded  { opacity:0.28; }
+    #zoom-badge.faded { opacity:0.22; }
+    .zb { border:none; border-radius:50px; padding:4px 12px;
+      font-family:'Fredoka',cursive; font-size:14px; font-weight:600;
+      color:#3A4A2A; background:transparent; cursor:pointer;
+      -webkit-tap-highlight-color:transparent; user-select:none;
+      transition:background .15s,color .15s; }
+    .zb.on { background:#3A4A2A; color:#fff; }
   </style>
+
+  <!-- LAYOUT ENGINE: geometry-first, no device profiles, zoom scalar -->
+  <script>
+  (function(){
+    /* Zoom scalar — 3 levels stored in localStorage 'ls_zoom' */
+    var ZS=[0.82,1.0,1.2];
+    window.LS_zoomIdx=1;
+    try{ var zi=parseInt(localStorage.getItem('ls_zoom')); if(zi>=0&&zi<ZS.length) window.LS_zoomIdx=zi; }catch(e){}
+
+    /* Core solver: derives every px value from actual viewport geometry */
+    window.LS_solve=function(){
+      var vw=window.innerWidth;
+      var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+      var z=ZS[window.LS_zoomIdx];
+      /* Scene structure */
+      var streamH=Math.max(Math.round(vh*0.075),48);
+      var bankH=Math.round(Math.max(Math.min(vh*0.33,360),160));
+      var upperH=vh-streamH-44-bankH;
+      var grassH=upperH*0.68;
+      /* Tile sizes — solve width & height constraints simultaneously */
+      var GAP_R=0.14;
+      var tByW=Math.floor(vw*0.90/(3+2*GAP_R));    /* letters: 3-col width  */
+      var tByH=Math.floor(grassH*0.88/(2+GAP_R));  /* 2-row height          */
+      var tile=Math.round(Math.min(tByW,tByH,118)*z);
+      var nByW=Math.floor(vw*0.94/(5+4*GAP_R));    /* numbers: 5-col width  */
+      var numTile=Math.round(Math.min(nByW,tByH,108)*z);
+      return {vw:vw,vh:vh,z:z,streamH:streamH,bankH:bankH,grassH:grassH,
+              tile:tile,numTile:numTile,
+              outline:Math.round(tile*1.08),zone:Math.round(numTile*1.18),
+              beetle:Math.round(Math.min(bankH*0.35,76)*z)};
+    };
+
+    /* Apply to CSS custom properties */
+    window.LS_applyLayout=function(){
+      var L=window.LS_solve(),r=document.documentElement;
+      r.style.setProperty('--stream-h',  L.streamH+'px');
+      r.style.setProperty('--bank-h',    L.bankH+'px');
+      r.style.setProperty('--tile-sz',   L.tile+'px');
+      r.style.setProperty('--tile-fs',   Math.round(L.tile*0.55)+'px');
+      r.style.setProperty('--outline-sz',L.outline+'px');
+      r.style.setProperty('--outline-fs',Math.round(L.outline*0.58)+'px');
+      r.style.setProperty('--zone-sz',   L.zone+'px');
+      r.style.setProperty('--zone-fs',   Math.round(L.zone*0.68)+'px');
+      r.style.setProperty('--hint-left', (Math.max(L.outline,L.zone)+28)+'px');
+      r.style.setProperty('--beetle-fs', L.beetle+'px');
+      window.LS_layout=L; return L;
+    };
+
+    window.LS_applyLayout();  /* run before first paint */
+  })();
+  </script>
 </head>
 <body>
 <br></br>
@@ -275,28 +328,29 @@
 
 <script>
 
-  // ── Device badge ──────────────────────────────
   (function(){
-    var ORDER=['phone','tablet','pc'];
-    var badge=document.createElement('div');
-    badge.id='device-badge';
-    function refresh(){ badge.textContent=window.LS_PROFILES[window.LS_currentDevice].label; }
-    refresh();
-    var ft;
-    function fade(){ ft=setTimeout(function(){ badge.classList.add('faded'); },4000); }
-    badge.addEventListener('click',function(){
-      var next=ORDER[(ORDER.indexOf(window.LS_currentDevice)+1)%ORDER.length];
-      window.LS_applyProfile(next);
-      try{localStorage.setItem('ls_device',next);}catch(e){}
-      refresh();
-      clearTimeout(ft); badge.classList.remove('faded'); fade();
+    var LABELS=['A\u2212','A','A+'];
+    var wrap=document.createElement('div'); wrap.id='zoom-badge';
+    LABELS.forEach(function(lbl,idx){
+      var btn=document.createElement('button');
+      btn.className='zb'+(idx===window.LS_zoomIdx?' on':'');
+      btn.textContent=lbl;
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        window.LS_zoomIdx=idx;
+        try{localStorage.setItem('ls_zoom',idx);}catch(x){}
+        wrap.querySelectorAll('.zb').forEach(function(b){b.classList.remove('on');});
+        btn.classList.add('on');
+        clearTimeout(ft); wrap.classList.remove('faded'); sf();
+      });
+      wrap.appendChild(btn);
     });
-    badge.addEventListener('mouseenter',function(){ clearTimeout(ft); badge.classList.remove('faded'); });
-    badge.addEventListener('mouseleave',fade);
-    document.body.appendChild(badge);
-    fade();
+    var ft; function sf(){ft=setTimeout(function(){wrap.classList.add('faded');},5000);}
+    wrap.addEventListener('mouseenter',function(){clearTimeout(ft);wrap.classList.remove('faded');});
+    wrap.addEventListener('mouseleave',sf);
+    document.body.appendChild(wrap);
+    sf();
   })();
-
   // Navigate to a module HTML file
   function go(filename) {
     window.location.href = filename;
