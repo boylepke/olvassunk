@@ -558,18 +558,42 @@
 /* ──────────────────────────────────────────────────
    GAME DATA
 ────────────────────────────────────────────────── */
-const ROUNDS = [
-  { target:'A',  distractors:['Á','H','V','M']  },
-  { target:'Á',  distractors:['A','É','H','V']  },
-  { target:'B',  distractors:['D','P','R','E']  },
-  { target:'E',  distractors:['É','F','B','L']  },
-  { target:'É',  distractors:['E','Á','F','B']  },
-  { target:'O',  distractors:['Ó','Ö','Ő','C']  },
-  { target:'Ö',  distractors:['O','Ó','Ő','U']  },
-  { target:'Ő',  distractors:['Ö','Ó','O','Ü']  },
-  { target:'U',  distractors:['Ú','Ü','Ű','N']  },
-  { target:'S',  distractors:['Z','C','G','F']  },
+/* Full Hungarian single-letter pool (no digraphs) */
+const LETTER_POOL = [
+  'A','Á','B','C','D','E','É','F','G','H',
+  'I','Í','J','K','L','M','N','O','Ó','Ö',
+  'Ő','P','R','S','T','U','Ú','Ü','Ű','V','Z'
 ];
+
+/* Visually/acoustically similar groups — smart distractors */
+const SIMILAR = {
+  'A':['Á','H','V','M'],  'Á':['A','É','H','V'],  'B':['D','P','R','E'],
+  'C':['G','O','S','Z'],  'D':['B','P','O','G'],   'E':['É','F','B','L'],
+  'É':['E','Á','F','B'],  'F':['E','T','P','L'],   'G':['C','O','D','S'],
+  'H':['N','M','K','I'],  'I':['Í','L','T','J'],   'Í':['I','L','T','J'],
+  'J':['I','Í','L','T'],  'K':['H','N','M','R'],   'L':['I','T','J','É'],
+  'M':['N','H','A','K'],  'N':['M','H','K','U'],   'O':['Ó','Ö','Ő','C'],
+  'Ó':['O','Ö','Ő','C'],  'Ö':['O','Ó','Ő','U'],  'Ő':['Ö','Ó','O','Ü'],
+  'P':['B','D','R','F'],  'R':['P','B','F','K'],   'S':['Z','C','G','F'],
+  'T':['F','L','I','J'],  'U':['Ú','Ü','Ű','N'],   'Ú':['U','Ü','Ű','N'],
+  'Ü':['Ű','U','Ú','Ö'],  'Ű':['Ü','U','Ú','Ö'],  'V':['U','A','F','M'],
+  'Z':['S','C','G','F'],
+};
+
+function makeDistractors(target, count) {
+  const base   = (SIMILAR[target] || []).filter(l => l !== target);
+  const others = LETTER_POOL.filter(l => l !== target && !base.includes(l));
+  return shuffle([...base, ...shuffle(others)]).slice(0, count);
+}
+
+/* Rebuilt fresh each game — 10 random letters, no repeats */
+let ROUNDS = [];
+
+function buildRounds() {
+  ROUNDS = shuffle([...LETTER_POOL])
+    .slice(0, 10)
+    .map(letter => ({ target: letter, distractors: makeDistractors(letter, 4) }));
+}
 
 const UPPER_DECOS = [
   { e:'☁️',  t:'7%',  l:'6%',  s:46, z:2  },
