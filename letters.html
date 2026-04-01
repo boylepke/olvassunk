@@ -2,47 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Learning Letters · Little Sprouts</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
-
-  <!-- ══════════════════════════════════════════════════════
-       DEVICE ADAPTER — runs synchronously before first paint
-  ══════════════════════════════════════════════════════ -->
-  <script>
-  (function(){
-    function detect(){
-      var w=window.innerWidth,h=window.innerHeight;
-      var s=Math.min(w,h),l=Math.max(w,h);
-      if(s>=768&&l>=1024) return 'pc';
-      if(s>=540)          return 'tablet';
-      return 'phone';
-    }
-    window.LS_PROFILES={
-      phone:  {label:'📱 Phone',  tile:78,  outline:86,  stream:64, bank:0.33, beetle:54},
-      tablet: {label:'📟 Tablet', tile:100, outline:110, stream:82, bank:0.36, beetle:70},
-      pc:     {label:'🖥️ PC',     tile:116, outline:128, stream:96, bank:0.38, beetle:80},
-    };
-    window.LS_applyProfile=function(dev){
-      var p=window.LS_PROFILES[dev];
-      var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
-      var r=document.documentElement;
-      r.className=r.className.replace(/\bdevice-\w+/g,'')+' device-'+dev;
-      r.style.setProperty('--tile-sz',    p.tile+'px');
-      r.style.setProperty('--tile-fs',    Math.round(p.tile*0.55)+'px');
-      r.style.setProperty('--outline-sz', p.outline+'px');
-      r.style.setProperty('--outline-fs', Math.round(p.outline*0.58)+'px');
-      r.style.setProperty('--hint-left',  (p.outline+28)+'px');
-      r.style.setProperty('--stream-h',   p.stream+'px');
-      r.style.setProperty('--bank-h',     Math.round(Math.min(vh*p.bank,380))+'px');
-      r.style.setProperty('--beetle-fs',  p.beetle+'px');
-      window.LS_currentDevice=dev;
-    };
-    var saved=null; try{saved=localStorage.getItem('ls_device');}catch(e){}
-    var dev=(saved&&window.LS_PROFILES[saved])?saved:detect();
-    window.LS_applyProfile(dev);
-  })();
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@700;800&subset=latin-ext&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Learning Letters · Little Sprouts</title>family=Nunito:wght@700;800subset=latin-extdisplay=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -66,21 +28,7 @@
     /* ══════════════════════════════════════════════════
        GAME SCREEN
     ══════════════════════════════════════════════════ */
-    #game-screen { overflow: hidden; padding-bottom: env(safe-area-inset-bottom, 0px); }
-
-    /* ── Device badge ──────────────────────────────────── */
-    #device-badge {
-      position:absolute; top:13px; left:50%; transform:translateX(-50%);
-      z-index:200; background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
-      border-radius:50px; padding:5px 14px;
-      font-family:'Fredoka One',cursive; font-size:13px; color:#3A4A2A;
-      cursor:pointer; white-space:nowrap;
-      box-shadow:0 2px 8px rgba(0,0,0,0.12);
-      transition:transform .12s ease, opacity .3s ease;
-      -webkit-tap-highlight-color:transparent;
-    }
-    #device-badge:active { transform:translateX(-50%) scale(0.9); }
-    #device-badge.faded  { opacity:0.28; }
+    #game-screen { overflow: hidden; }
 
     /* ── Upper field: sky + grass ─────────────────── */
     #upper-field {
@@ -174,7 +122,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Fredoka', cursive;
       font-size: var(--outline-fs, 50px);
       color: rgba(255,255,255,0.35);
       z-index: 5;
@@ -199,7 +147,7 @@
       left: var(--hint-left, 130px);
       top: 50%;
       transform: translateY(-50%);
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Fredoka', cursive;
       font-size: 15px;
       color: rgba(255,255,255,0.75);
       display: flex;
@@ -228,7 +176,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Fredoka', cursive;
       font-size: var(--tile-fs, 44px);
       color: #3A2F24;
       cursor: grab;
@@ -327,9 +275,14 @@
 
 
     #success-overlay {
-      display: none; position: absolute; inset: 0; z-index: 100;
-      flex-direction: column; align-items: center; justify-content: center;
-      gap: 18px; background: rgba(0,0,0,0.08);
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
     }
     #success-overlay.show { display: flex; }
 
@@ -366,7 +319,7 @@
       border: none;
       border-radius: 50px;
       padding: 15px 36px;
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Fredoka', cursive;
       font-size: 22px;
       cursor: pointer;
       box-shadow: 0 5px 0 #3A9A2B, 0 7px 18px rgba(93,192,77,0.35);
@@ -404,7 +357,7 @@
       animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
     }
     .stats-title {
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Fredoka', cursive;
       font-size: 32px;
       color: #3A2F24;
       margin-bottom: 4px;
@@ -419,7 +372,7 @@
       background: #FFD93D;
       border-radius: 60px;
       padding: 12px 28px;
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Fredoka', cursive;
       font-size: 20px;
       color: #3A2F24;
       margin-bottom: 20px;
@@ -449,7 +402,7 @@
     }
 
     .stat-ltr {
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Fredoka', cursive;
       font-size: 30px; color: #3A2F24;
       width: 38px;
     }
@@ -465,7 +418,7 @@
       color: #fff;
       border: none; border-radius: 50px;
       padding: 16px 40px;
-      font-family: 'Fredoka One', cursive;
+      font-family: 'Fredoka', cursive;
       font-size: 22px;
       cursor: pointer;
       box-shadow: 0 5px 0 #4A9A38, 0 7px 18px rgba(107,191,89,0.35);
@@ -514,18 +467,18 @@
     <div id="match-hint"><span></span></div>
     <div id="beetle">🐞</div>
     <!-- Flowers injected by JS -->
+
+    <!-- Success overlay -->
+    <div id="success-overlay">
+      <div class="success-ring">
+        <div class="success-emojis">🎉 ⭐ 🎉</div>
+        <button class="next-btn" id="next-btn" onclick="nextRound()">Next Round →</button>
+      </div>
+    </div>
   </div>
 
   <!-- Tiles floating layer (spans full game-screen) -->
   <div id="tiles-layer"></div>
-
-  <!-- Success overlay at game-screen level — always fully visible -->
-  <div id="success-overlay">
-    <div class="success-ring">
-      <div class="success-emojis">🎉 ⭐ 🎉</div>
-      <button class="next-btn" id="next-btn" onclick="nextRound()">Next Round →</button>
-    </div>
-  </div>
 
 </div>
 
@@ -594,23 +547,30 @@ let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
 /* ──────────────────────────────────────────────────
    RESPONSIVE SCALE — sets CSS vars from viewport size
 ────────────────────────────────────────────────── */
-/* ──────────────────────────────────────────────────
-   DEVICE LAYOUT — driven by LS_applyProfile (head)
-────────────────────────────────────────────────── */
-function onDeviceChanged() {
-  /* Profile already written to CSS vars by LS_applyProfile.
-     Just re-spawn tiles at the new size. */
-  document.querySelectorAll('.letter-tile').forEach(t => t.remove());
-  if (typeof roundIdx !== 'undefined' && ROUNDS[roundIdx]) {
-    spawnTiles(shuffle([ROUNDS[roundIdx].target, ...ROUNDS[roundIdx].distractors]));
-  }
+function applyScale() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const r  = document.documentElement;
+
+  // Tile: up to 21% of vw, 12% of vh, capped at 110px, min 56px
+  const tile    = Math.round(Math.max(56, Math.min(vw * 0.21, vh * 0.12, 110)));
+  const outline = Math.round(tile * 1.08);
+
+  r.style.setProperty('--tile-sz',    tile + 'px');
+  r.style.setProperty('--tile-fs',    Math.round(tile * 0.55) + 'px');
+  r.style.setProperty('--outline-sz', outline + 'px');
+  r.style.setProperty('--outline-fs', Math.round(outline * 0.58) + 'px');
+  r.style.setProperty('--hint-left',  (outline + 28) + 'px');
+  r.style.setProperty('--stream-h',   Math.round(Math.min(vh * 0.09, 100)) + 'px');
+  r.style.setProperty('--bank-h',     Math.round(Math.min(vh * 0.34, 340)) + 'px');
+  r.style.setProperty('--beetle-fs',  Math.round(Math.min(tile * 0.74, 80)) + 'px');
 }
 
 function init() {
+  applyScale();
   roundIdx = 0; tries = 0; stats = [];
   buildDecorations();
   buildStreamCreatures();
-  buildDeviceBadge();
   loadRound();
   showScreen('game-screen');
 }
@@ -1087,43 +1047,13 @@ function goBackHome() {
 }
 
 /* ──────────────────────────────────────────────────
-   DEVICE BADGE
-────────────────────────────────────────────────── */
-function buildDeviceBadge() {
-  const ORDER = ['phone','tablet','pc'];
-  const badge = document.createElement('div');
-  badge.id = 'device-badge';
-  badge.title = 'Tap to switch layout';
-  function refresh(){ badge.textContent = window.LS_PROFILES[window.LS_currentDevice].label; }
-  refresh();
-  let fadeTimer;
-  function startFade(){ fadeTimer = setTimeout(() => badge.classList.add('faded'), 4000); }
-  badge.addEventListener('click', () => {
-    const next = ORDER[(ORDER.indexOf(window.LS_currentDevice)+1) % ORDER.length];
-    window.LS_applyProfile(next);
-    try{ localStorage.setItem('ls_device', next); }catch(e){}
-    refresh();
-    onDeviceChanged();
-    clearTimeout(fadeTimer); badge.classList.remove('faded'); startFade();
-  });
-  badge.addEventListener('mouseenter', () => { clearTimeout(fadeTimer); badge.classList.remove('faded'); });
-  badge.addEventListener('mouseleave', startFade);
-  document.getElementById('game-screen').appendChild(badge);
-  startFade();
-}
-
-/* ──────────────────────────────────────────────────
    START
 ────────────────────────────────────────────────── */
 window.addEventListener('load', init);
 window.addEventListener('resize', () => {
-  const pinned = (() => { try{ return localStorage.getItem('ls_device'); }catch(e){ return null; } })();
-  if (!pinned) {
-    const w=window.innerWidth,h=window.innerHeight,s=Math.min(w,h),l=Math.max(w,h);
-    const dev=(s>=768&&l>=1024)?'pc':(s>=540)?'tablet':'phone';
-    if (dev !== window.LS_currentDevice) window.LS_applyProfile(dev);
-  }
-  onDeviceChanged();
+  applyScale();
+  document.querySelectorAll('.letter-tile').forEach(t => t.remove());
+  spawnTiles(shuffle([ROUNDS[roundIdx].target, ...ROUNDS[roundIdx].distractors]));
 });
 </script>
 </body>

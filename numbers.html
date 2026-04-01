@@ -2,46 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Learning Numbers · Little Sprouts</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
-
-  <!-- ══════════════════════════════════════════════════════
-       DEVICE ADAPTER — runs synchronously before first paint
-  ══════════════════════════════════════════════════════ -->
-  <script>
-  (function(){
-    function detect(){
-      var w=window.innerWidth,h=window.innerHeight,s=Math.min(w,h),l=Math.max(w,h);
-      if(s>=768&&l>=1024) return 'pc';
-      if(s>=540)          return 'tablet';
-      return 'phone';
-    }
-    window.LS_PROFILES={
-      phone:  {label:'📱 Phone',  tile:76,  zone:90,  stream:64, bank:0.35, beetle:54},
-      tablet: {label:'📟 Tablet', tile:96,  zone:114, stream:82, bank:0.37, beetle:68},
-      pc:     {label:'🖥️ PC',     tile:110, zone:130, stream:96, bank:0.38, beetle:78},
-    };
-    window.LS_applyProfile=function(dev){
-      var p=window.LS_PROFILES[dev];
-      var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
-      var r=document.documentElement;
-      r.className=r.className.replace(/\bdevice-\w+/g,'')+' device-'+dev;
-      r.style.setProperty('--tile-sz',   p.tile+'px');
-      r.style.setProperty('--tile-fs',   Math.round(p.tile*0.60)+'px');
-      r.style.setProperty('--zone-sz',   p.zone+'px');
-      r.style.setProperty('--zone-fs',   Math.round(p.zone*0.68)+'px');
-      r.style.setProperty('--hint-left', (p.zone+28)+'px');
-      r.style.setProperty('--stream-h',  p.stream+'px');
-      r.style.setProperty('--bank-h',    Math.round(Math.min(vh*p.bank,380))+'px');
-      r.style.setProperty('--beetle-fs', p.beetle+'px');
-      window.LS_currentDevice=dev;
-    };
-    var saved=null; try{saved=localStorage.getItem('ls_device');}catch(e){}
-    var dev=(saved&&window.LS_PROFILES[saved])?saved:detect();
-    window.LS_applyProfile(dev);
-  })();
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@700;800&subset=latin-ext&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Learning Numbers · Little Sprouts</title>family=Nunito:wght@700;800subset=latin-extdisplay=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
     html, body { width:100%; height:100%; overflow:hidden; user-select:none; -webkit-user-select:none; font-family:'Nunito',sans-serif; background:#87CEEB; }
@@ -50,21 +13,7 @@
     .screen.active { display:flex; }
 
     /* ══ SCENE ══════════════════════════════════════════ */
-    #game-screen { overflow:hidden; padding-bottom: env(safe-area-inset-bottom, 0px); }
-
-    /* ── Device badge ──────────────────────────────────── */
-    #device-badge {
-      position:absolute; top:13px; left:50%; transform:translateX(-50%);
-      z-index:200; background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
-      border-radius:50px; padding:5px 14px;
-      font-family:'Fredoka One',cursive; font-size:13px; color:#3A4A2A;
-      cursor:pointer; white-space:nowrap;
-      box-shadow:0 2px 8px rgba(0,0,0,0.12);
-      transition:transform .12s ease, opacity .3s ease;
-      -webkit-tap-highlight-color:transparent;
-    }
-    #device-badge:active { transform:translateX(-50%) scale(0.9); }
-    #device-badge.faded  { opacity:0.28; }
+    #game-screen { overflow:hidden; }
 
     #upper-field {
       flex:1; position:relative;
@@ -110,7 +59,7 @@
       border-radius:22px;
       border:4px dashed rgba(255,255,255,0.5);
       display:flex; align-items:center; justify-content:center;
-      font-family:'Fredoka One',cursive;
+      font-family:'Fredoka',cursive;
       font-size:var(--zone-fs, 62px);
       color:rgba(255,255,255,0.3);
       z-index:6;
@@ -131,7 +80,7 @@
     /* ── Count hint label ── */
     #count-hint {
       position:absolute; left:var(--hint-left, 120px); bottom:28px;
-      font-family:'Fredoka One',cursive; font-size:14px;
+      font-family:'Fredoka',cursive; font-size:14px;
       color:rgba(255,255,255,.72); pointer-events:none; z-index:6;
       line-height:1.35;
     }
@@ -183,7 +132,7 @@
       position:absolute; width:var(--tile-sz, 76px); height:var(--tile-sz, 76px);
       background:#FFF8EE; border:3px solid #D9BC8E; border-radius:18px;
       display:flex; align-items:center; justify-content:center;
-      font-family:'Fredoka One',cursive; font-size:var(--tile-fs, 46px); color:#3A2F24;
+      font-family:'Fredoka',cursive; font-size:var(--tile-fs, 46px); color:#3A2F24;
       cursor:grab; pointer-events:auto; touch-action:none;
       box-shadow:0 5px 0 #C0A060,0 7px 16px rgba(0,0,0,.16);
       transition:transform .1s ease,box-shadow .1s ease;
@@ -203,20 +152,20 @@
     /* ── "Right bank" label on upper field ── */
     #right-bank-label {
       position:absolute; right:16px; top:32%;
-      font-family:'Fredoka One',cursive; font-size:13px;
+      font-family:'Fredoka',cursive; font-size:13px;
       color:rgba(255,255,255,.65); pointer-events:none; z-index:30;
       text-align:center; line-height:1.4;
     }
 
     /* ── Success overlay ── */
-    #success-overlay { display:none; position:absolute; inset:0; z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:18px; background:rgba(0,0,0,0.08); }
+    #success-overlay { display:none; position:absolute; inset:0; z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
     #success-overlay.show { display:flex; }
     .success-ring { background:rgba(255,255,255,.18); backdrop-filter:blur(6px); border:2px solid rgba(255,255,255,.35); border-radius:32px; padding:24px 38px; display:flex; flex-direction:column; align-items:center; gap:12px; animation:popIn .45s cubic-bezier(.34,1.56,.64,1) both; }
     @keyframes popIn { from{transform:scale(.5) rotate(-5deg);opacity:0;} to{transform:scale(1) rotate(0deg);opacity:1;} }
-    .success-number { font-family:'Fredoka One',cursive; font-size:64px; color:#fff; text-shadow:0 3px 12px rgba(0,0,0,.2); animation:popIn .4s .05s cubic-bezier(.34,1.56,.64,1) both; }
+    .success-number { font-family:'Fredoka',cursive; font-size:64px; color:#fff; text-shadow:0 3px 12px rgba(0,0,0,.2); animation:popIn .4s .05s cubic-bezier(.34,1.56,.64,1) both; }
     .success-emojis { font-size:38px; letter-spacing:4px; animation:wiggle .6s ease-in-out infinite alternate; }
     @keyframes wiggle { from{transform:rotate(-6deg) scale(1);} to{transform:rotate(6deg) scale(1.05);} }
-    .next-btn { background:#5DC04D; color:#fff; border:none; border-radius:50px; padding:14px 34px; font-family:'Fredoka One',cursive; font-size:22px; cursor:pointer; box-shadow:0 5px 0 #3A9A2B,0 7px 18px rgba(93,192,77,.35); -webkit-tap-highlight-color:transparent; transition:transform .1s,box-shadow .1s; animation:popIn .45s .18s cubic-bezier(.34,1.56,.64,1) both; }
+    .next-btn { background:#5DC04D; color:#fff; border:none; border-radius:50px; padding:14px 34px; font-family:'Fredoka',cursive; font-size:22px; cursor:pointer; box-shadow:0 5px 0 #3A9A2B,0 7px 18px rgba(93,192,77,.35); -webkit-tap-highlight-color:transparent; transition:transform .1s,box-shadow .1s; animation:popIn .45s .18s cubic-bezier(.34,1.56,.64,1) both; }
     .next-btn:active { transform:translateY(3px); box-shadow:0 2px 0 #3A9A2B; }
 
     #confetti-canvas { position:fixed; inset:0; pointer-events:none; z-index:999; }
@@ -224,17 +173,17 @@
     /* ══ STATS ══════════════════════════════════════════ */
     #stats-screen { background:#F7F2EA; align-items:center; padding:44px 22px 32px; overflow-y:auto; gap:0; }
     .stats-hero  { font-size:56px; margin-bottom:6px; animation:popIn .5s cubic-bezier(.34,1.56,.64,1) both; }
-    .stats-title { font-family:'Fredoka One',cursive; font-size:32px; color:#3A2F24; margin-bottom:4px; }
+    .stats-title { font-family:'Fredoka',cursive; font-size:32px; color:#3A2F24; margin-bottom:4px; }
     .stats-sub   { font-size:15px; font-weight:700; color:#8C7B6B; margin-bottom:22px; }
-    .stats-total { background:#FFD93D; border-radius:60px; padding:12px 28px; font-family:'Fredoka One',cursive; font-size:20px; color:#3A2F24; margin-bottom:20px; box-shadow:0 4px 12px rgba(255,217,61,.4),0 3px 0 #C8A820; }
+    .stats-total { background:#FFD93D; border-radius:60px; padding:12px 28px; font-family:'Fredoka',cursive; font-size:20px; color:#3A2F24; margin-bottom:20px; box-shadow:0 4px 12px rgba(255,217,61,.4),0 3px 0 #C8A820; }
     .stats-list  { width:100%; max-width:380px; display:flex; flex-direction:column; gap:9px; margin-bottom:26px; }
     .stat-row    { background:#fff; border-radius:16px; padding:13px 18px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,.06); animation:slideIn .3s ease both; }
     @keyframes slideIn { from{opacity:0;transform:translateX(-16px);} to{opacity:1;transform:translateX(0);} }
-    .stat-num    { font-family:'Fredoka One',cursive; font-size:34px; color:#3A2F24; width:44px; text-align:center; }
+    .stat-num    { font-family:'Fredoka',cursive; font-size:34px; color:#3A2F24; width:44px; text-align:center; }
     .stat-critters { font-size:18px; flex:1; padding-left:8px; letter-spacing:2px; }
     .stat-tries  { font-size:13px; font-weight:700; color:#8C7B6B; min-width:80px; text-align:center; }
     .stat-stars  { font-size:18px; letter-spacing:1px; }
-    .play-again-btn { background:#6BBF59; color:#fff; border:none; border-radius:50px; padding:16px 40px; font-family:'Fredoka One',cursive; font-size:22px; cursor:pointer; box-shadow:0 5px 0 #4A9A38,0 7px 18px rgba(107,191,89,.35); -webkit-tap-highlight-color:transparent; }
+    .play-again-btn { background:#6BBF59; color:#fff; border:none; border-radius:50px; padding:16px 40px; font-family:'Fredoka',cursive; font-size:22px; cursor:pointer; box-shadow:0 5px 0 #4A9A38,0 7px 18px rgba(107,191,89,.35); -webkit-tap-highlight-color:transparent; }
   </style>
 </head>
 <body>
@@ -266,18 +215,17 @@
     <div id="drop-zone"></div>
     <div id="count-hint"><br></div>
     <div id="beetle">🐞</div>
+
+    <div id="success-overlay">
+      <div class="success-ring">
+        <div class="success-number" id="success-number">5</div>
+        <div class="success-emojis" id="success-emojis">🎉 ⭐ 🎉</div>
+        <button class="next-btn" onclick="nextRound()">Következő →</button>
+      </div>
+    </div>
   </div>
 
   <div id="tiles-layer"></div>
-
-  <!-- Success overlay at game-screen level — always fully visible -->
-  <div id="success-overlay">
-    <div class="success-ring">
-      <div class="success-number" id="success-number">5</div>
-      <div class="success-emojis" id="success-emojis">🎉 ⭐ 🎉</div>
-      <button class="next-btn" onclick="nextRound()">Következő →</button>
-    </div>
-  </div>
 </div>
 
 <!-- ═══ STATS SCREEN ═════════════════════════════════ -->
@@ -323,26 +271,35 @@ let animating = false;
 let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
 
 /* ──────────────────────────────────────────────────────
-   DEVICE LAYOUT — driven by LS_applyProfile (head)
+   RESPONSIVE SCALE
 ────────────────────────────────────────────────────── */
-function onDeviceChanged() {
-  document.querySelectorAll('.num-tile').forEach(t => t.remove());
-  if (typeof roundSequence !== 'undefined' && roundSequence.length) {
-    document.querySelectorAll('.grass-critter').forEach(c => c.remove());
-    placeCritters(roundSequence[roundIdx]);
-    spawnNumberTiles();
-  }
+function applyScale() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const r  = document.documentElement;
+
+  const tile = Math.round(Math.max(52, Math.min(vw * 0.21, vh * 0.12, 110)));
+  const zone = Math.round(tile * 1.18);
+
+  r.style.setProperty('--tile-sz',   tile + 'px');
+  r.style.setProperty('--tile-fs',   Math.round(tile * 0.60) + 'px');
+  r.style.setProperty('--zone-sz',   zone + 'px');
+  r.style.setProperty('--zone-fs',   Math.round(zone * 0.68) + 'px');
+  r.style.setProperty('--hint-left', (zone + 28) + 'px');
+  r.style.setProperty('--stream-h',  Math.round(Math.min(vh * 0.09, 100)) + 'px');
+  r.style.setProperty('--bank-h',    Math.round(Math.min(vh * 0.35, 340)) + 'px');
+  r.style.setProperty('--beetle-fs', Math.round(Math.min(tile * 0.74, 80)) + 'px');
 }
 
 /* ──────────────────────────────────────────────────────
    INIT
 ────────────────────────────────────────────────────── */
 function init() {
+  applyScale();
   roundSequence = shuffle([1,2,3,4,5,6,7,8,9,10]);
   roundIdx = 0; tries = 0; stats = [];
   buildDecorations();
   buildStreamCreatures();
-  buildDeviceBadge();
   loadRound();
   showScreen('game-screen');
 }
@@ -430,10 +387,8 @@ function placeCritters(n) {
   /* Available area: avoid the drop-zone (left ~130px) and beetle (right ~80px) and edges */
   /* We place critters in the zone: x 130px → 78%, y 5% → 80% of lower-field */
   const tile        = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 76;
-  const zoneSz      = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--zone-sz')) || 90;
-  const CRITTER_SIZE = Math.round(Math.max(18, Math.min(tile * 0.45, n <= 5 ? 36 : n <= 7 ? 30 : 26)));
-  const areaX1 = zoneSz + 24;           /* clear drop-zone + small gap */
-  const areaX2 = lRect.width * 0.80;
+  const CRITTER_SIZE = Math.round(Math.max(20, Math.min(tile * 0.5, n <= 5 ? 36 : n <= 7 ? 30 : 26)));
+  const areaX1 = 135, areaX2 = lRect.width * 0.80;
   const areaY1 = lRect.height * 0.06, areaY2 = lRect.height * 0.82;
 
   const positions = poissonPositions(n, areaX1, areaX2, areaY1, areaY2, CRITTER_SIZE + 6);
@@ -776,40 +731,11 @@ function setTrans(el,t) { el.style.transition=t; }
 function shuffle(arr) { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 function goBackHome() { if(window.androidBack){window.androidBack();return;} history.back(); }
 
-/* ──────────────────────────────────────────────────────
-   DEVICE BADGE
-────────────────────────────────────────────────────── */
-function buildDeviceBadge() {
-  const ORDER = ['phone','tablet','pc'];
-  const badge = document.createElement('div');
-  badge.id = 'device-badge';
-  badge.title = 'Tap to switch layout';
-  function refresh(){ badge.textContent = window.LS_PROFILES[window.LS_currentDevice].label; }
-  refresh();
-  let fadeTimer;
-  function startFade(){ fadeTimer = setTimeout(() => badge.classList.add('faded'), 4000); }
-  badge.addEventListener('click', () => {
-    const next = ORDER[(ORDER.indexOf(window.LS_currentDevice)+1) % ORDER.length];
-    window.LS_applyProfile(next);
-    try{ localStorage.setItem('ls_device', next); }catch(e){}
-    refresh(); onDeviceChanged();
-    clearTimeout(fadeTimer); badge.classList.remove('faded'); startFade();
-  });
-  badge.addEventListener('mouseenter', () => { clearTimeout(fadeTimer); badge.classList.remove('faded'); });
-  badge.addEventListener('mouseleave', startFade);
-  document.getElementById('game-screen').appendChild(badge);
-  startFade();
-}
-
 window.addEventListener('load', init);
 window.addEventListener('resize', ()=>{
-  const pinned=(()=>{try{return localStorage.getItem('ls_device');}catch(e){return null;}})();
-  if(!pinned){
-    const w=window.innerWidth,h=window.innerHeight,s=Math.min(w,h),l=Math.max(w,h);
-    const dev=(s>=768&&l>=1024)?'pc':(s>=540)?'tablet':'phone';
-    if(dev!==window.LS_currentDevice) window.LS_applyProfile(dev);
-  }
-  onDeviceChanged();
+  applyScale();
+  document.querySelectorAll('.num-tile').forEach(t=>t.remove());
+  spawnNumberTiles();
 });
 </script>
 </body>
