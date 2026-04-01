@@ -5,23 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Learning Numbers · Little Sprouts</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- ══════════════════════════════════════════════════════
+       DEVICE ADAPTER — runs synchronously before first paint
+  ══════════════════════════════════════════════════════ -->
   <script>
-    /* ⚡ Synchronous pre-paint scale — runs before first pixel is drawn */
-    (function(){
-      var vw=window.innerWidth,
-          vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight,
-          r=document.documentElement;
-      var tile=Math.round(Math.max(52,Math.min(vw*0.21,vh*0.12,110)));
-      var zone=Math.round(tile*1.18);
-      r.style.setProperty('--tile-sz',   tile+'px');
-      r.style.setProperty('--tile-fs',   Math.round(tile*0.60)+'px');
-      r.style.setProperty('--zone-sz',   zone+'px');
-      r.style.setProperty('--zone-fs',   Math.round(zone*0.68)+'px');
-      r.style.setProperty('--hint-left', (zone+28)+'px');
-      r.style.setProperty('--stream-h',  Math.round(Math.min(vh*0.09,100))+'px');
-      r.style.setProperty('--bank-h',    Math.round(Math.min(vh*0.35,340))+'px');
-      r.style.setProperty('--beetle-fs', Math.round(Math.min(tile*0.74,80))+'px');
-    })();
+  (function(){
+    function detect(){
+      var w=window.innerWidth,h=window.innerHeight,s=Math.min(w,h),l=Math.max(w,h);
+      if(s>=768&&l>=1024) return 'pc';
+      if(s>=540)          return 'tablet';
+      return 'phone';
+    }
+    window.LS_PROFILES={
+      phone:  {label:'📱 Phone',  tile:76,  zone:90,  stream:64, bank:0.35, beetle:54},
+      tablet: {label:'📟 Tablet', tile:96,  zone:114, stream:82, bank:0.37, beetle:68},
+      pc:     {label:'🖥️ PC',     tile:110, zone:130, stream:96, bank:0.38, beetle:78},
+    };
+    window.LS_applyProfile=function(dev){
+      var p=window.LS_PROFILES[dev];
+      var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+      var r=document.documentElement;
+      r.className=r.className.replace(/\bdevice-\w+/g,'')+' device-'+dev;
+      r.style.setProperty('--tile-sz',   p.tile+'px');
+      r.style.setProperty('--tile-fs',   Math.round(p.tile*0.60)+'px');
+      r.style.setProperty('--zone-sz',   p.zone+'px');
+      r.style.setProperty('--zone-fs',   Math.round(p.zone*0.68)+'px');
+      r.style.setProperty('--hint-left', (p.zone+28)+'px');
+      r.style.setProperty('--stream-h',  p.stream+'px');
+      r.style.setProperty('--bank-h',    Math.round(Math.min(vh*p.bank,380))+'px');
+      r.style.setProperty('--beetle-fs', p.beetle+'px');
+      window.LS_currentDevice=dev;
+    };
+    var saved=null; try{saved=localStorage.getItem('ls_device');}catch(e){}
+    var dev=(saved&&window.LS_PROFILES[saved])?saved:detect();
+    window.LS_applyProfile(dev);
+  })();
   </script>
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
@@ -32,6 +51,20 @@
 
     /* ══ SCENE ══════════════════════════════════════════ */
     #game-screen { overflow:hidden; padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+    /* ── Device badge ──────────────────────────────────── */
+    #device-badge {
+      position:absolute; top:13px; left:50%; transform:translateX(-50%);
+      z-index:200; background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
+      border-radius:50px; padding:5px 14px;
+      font-family:'Fredoka One',cursive; font-size:13px; color:#3A4A2A;
+      cursor:pointer; white-space:nowrap;
+      box-shadow:0 2px 8px rgba(0,0,0,0.12);
+      transition:transform .12s ease, opacity .3s ease;
+      -webkit-tap-highlight-color:transparent;
+    }
+    #device-badge:active { transform:translateX(-50%) scale(0.9); }
+    #device-badge.faded  { opacity:0.28; }
 
     #upper-field {
       flex:1; position:relative;
@@ -237,7 +270,7 @@
 
   <div id="tiles-layer"></div>
 
-  <!-- Success overlay — full-screen so button is always centred & visible -->
+  <!-- Success overlay at game-screen level — always fully visible -->
   <div id="success-overlay">
     <div class="success-ring">
       <div class="success-number" id="success-number">5</div>
@@ -290,35 +323,26 @@ let animating = false;
 let drag = { on:false, tile:null, ox:0, oy:0, origL:0, origT:0 };
 
 /* ──────────────────────────────────────────────────────
-   RESPONSIVE SCALE
+   DEVICE LAYOUT — driven by LS_applyProfile (head)
 ────────────────────────────────────────────────────── */
-function applyScale() {
-  const vw = window.innerWidth;
-  const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-  const r  = document.documentElement;
-
-  const tile = Math.round(Math.max(52, Math.min(vw * 0.21, vh * 0.12, 110)));
-  const zone = Math.round(tile * 1.18);
-
-  r.style.setProperty('--tile-sz',   tile + 'px');
-  r.style.setProperty('--tile-fs',   Math.round(tile * 0.60) + 'px');
-  r.style.setProperty('--zone-sz',   zone + 'px');
-  r.style.setProperty('--zone-fs',   Math.round(zone * 0.68) + 'px');
-  r.style.setProperty('--hint-left', (zone + 28) + 'px');
-  r.style.setProperty('--stream-h',  Math.round(Math.min(vh * 0.09, 100)) + 'px');
-  r.style.setProperty('--bank-h',    Math.round(Math.min(vh * 0.35, 340)) + 'px');
-  r.style.setProperty('--beetle-fs', Math.round(Math.min(tile * 0.74, 80)) + 'px');
+function onDeviceChanged() {
+  document.querySelectorAll('.num-tile').forEach(t => t.remove());
+  if (typeof roundSequence !== 'undefined' && roundSequence.length) {
+    document.querySelectorAll('.grass-critter').forEach(c => c.remove());
+    placeCritters(roundSequence[roundIdx]);
+    spawnNumberTiles();
+  }
 }
 
 /* ──────────────────────────────────────────────────────
    INIT
 ────────────────────────────────────────────────────── */
 function init() {
-  applyScale();
   roundSequence = shuffle([1,2,3,4,5,6,7,8,9,10]);
   roundIdx = 0; tries = 0; stats = [];
   buildDecorations();
   buildStreamCreatures();
+  buildDeviceBadge();
   loadRound();
   showScreen('game-screen');
 }
@@ -406,8 +430,10 @@ function placeCritters(n) {
   /* Available area: avoid the drop-zone (left ~130px) and beetle (right ~80px) and edges */
   /* We place critters in the zone: x 130px → 78%, y 5% → 80% of lower-field */
   const tile        = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tile-sz')) || 76;
-  const CRITTER_SIZE = Math.round(Math.max(20, Math.min(tile * 0.5, n <= 5 ? 36 : n <= 7 ? 30 : 26)));
-  const areaX1 = 135, areaX2 = lRect.width * 0.80;
+  const zoneSz      = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--zone-sz')) || 90;
+  const CRITTER_SIZE = Math.round(Math.max(18, Math.min(tile * 0.45, n <= 5 ? 36 : n <= 7 ? 30 : 26)));
+  const areaX1 = zoneSz + 24;           /* clear drop-zone + small gap */
+  const areaX2 = lRect.width * 0.80;
   const areaY1 = lRect.height * 0.06, areaY2 = lRect.height * 0.82;
 
   const positions = poissonPositions(n, areaX1, areaX2, areaY1, areaY2, CRITTER_SIZE + 6);
@@ -750,11 +776,40 @@ function setTrans(el,t) { el.style.transition=t; }
 function shuffle(arr) { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 function goBackHome() { if(window.androidBack){window.androidBack();return;} history.back(); }
 
+/* ──────────────────────────────────────────────────────
+   DEVICE BADGE
+────────────────────────────────────────────────────── */
+function buildDeviceBadge() {
+  const ORDER = ['phone','tablet','pc'];
+  const badge = document.createElement('div');
+  badge.id = 'device-badge';
+  badge.title = 'Tap to switch layout';
+  function refresh(){ badge.textContent = window.LS_PROFILES[window.LS_currentDevice].label; }
+  refresh();
+  let fadeTimer;
+  function startFade(){ fadeTimer = setTimeout(() => badge.classList.add('faded'), 4000); }
+  badge.addEventListener('click', () => {
+    const next = ORDER[(ORDER.indexOf(window.LS_currentDevice)+1) % ORDER.length];
+    window.LS_applyProfile(next);
+    try{ localStorage.setItem('ls_device', next); }catch(e){}
+    refresh(); onDeviceChanged();
+    clearTimeout(fadeTimer); badge.classList.remove('faded'); startFade();
+  });
+  badge.addEventListener('mouseenter', () => { clearTimeout(fadeTimer); badge.classList.remove('faded'); });
+  badge.addEventListener('mouseleave', startFade);
+  document.getElementById('game-screen').appendChild(badge);
+  startFade();
+}
+
 window.addEventListener('load', init);
 window.addEventListener('resize', ()=>{
-  applyScale();
-  document.querySelectorAll('.num-tile').forEach(t=>t.remove());
-  spawnNumberTiles();
+  const pinned=(()=>{try{return localStorage.getItem('ls_device');}catch(e){return null;}})();
+  if(!pinned){
+    const w=window.innerWidth,h=window.innerHeight,s=Math.min(w,h),l=Math.max(w,h);
+    const dev=(s>=768&&l>=1024)?'pc':(s>=540)?'tablet':'phone';
+    if(dev!==window.LS_currentDevice) window.LS_applyProfile(dev);
+  }
+  onDeviceChanged();
 });
 </script>
 </body>

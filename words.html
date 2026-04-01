@@ -5,25 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Building Words · Little Sprouts</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- ══════════════════════════════════════════════════════
+       DEVICE ADAPTER — runs synchronously before first paint
+  ══════════════════════════════════════════════════════ -->
   <script>
-    /* ⚡ Synchronous pre-paint scale — runs before first pixel is drawn */
-    (function(){
-      var vw=window.innerWidth,
-          vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight,
-          r=document.documentElement;
-      var wordLen=4, maxW=vw*0.86;
-      var gap=Math.max(3,Math.min(6,Math.floor(12/wordLen)));
-      var slotSize=Math.max(30,Math.min(52,Math.floor((maxW-gap*(wordLen-1))/wordLen)));
-      var tileSize=Math.min(76,Math.round(slotSize*1.45));
-      r.style.setProperty('--slot-sz',  slotSize+'px');
-      r.style.setProperty('--slot-fs',  Math.round(slotSize*0.58)+'px');
-      r.style.setProperty('--slot-gap', gap+'px');
-      r.style.setProperty('--tile-sz',  tileSize+'px');
-      r.style.setProperty('--tile-fs',  Math.round(tileSize*0.54)+'px');
-      r.style.setProperty('--stream-h', Math.round(Math.min(vh*0.09,100))+'px');
-      r.style.setProperty('--bank-h',   Math.round(Math.min(vh*0.34,340))+'px');
-      r.style.setProperty('--beetle-fs',Math.round(Math.min(tileSize*0.74,80))+'px');
-    })();
+  (function(){
+    function detect(){
+      var w=window.innerWidth,h=window.innerHeight,s=Math.min(w,h),l=Math.max(w,h);
+      if(s>=768&&l>=1024) return 'pc';
+      if(s>=540)          return 'tablet';
+      return 'phone';
+    }
+    window.LS_PROFILES={
+      phone:  {label:'📱 Phone',  tile:72,  stream:64, bank:0.34, beetle:52, slotMax:52, tileMax:76},
+      tablet: {label:'📟 Tablet', tile:96,  stream:82, bank:0.36, beetle:68, slotMax:68, tileMax:96},
+      pc:     {label:'🖥️ PC',     tile:110, stream:96, bank:0.38, beetle:78, slotMax:80, tileMax:110},
+    };
+    window.LS_applyProfile=function(dev){
+      var p=window.LS_PROFILES[dev];
+      var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+      var r=document.documentElement;
+      r.className=r.className.replace(/\bdevice-\w+/g,'')+' device-'+dev;
+      r.style.setProperty('--stream-h',  p.stream+'px');
+      r.style.setProperty('--bank-h',    Math.round(Math.min(vh*p.bank,380))+'px');
+      r.style.setProperty('--beetle-fs', p.beetle+'px');
+      /* tile/slot vars are set per-word by applySlotSize — just seed defaults */
+      r.style.setProperty('--tile-sz',   p.tile+'px');
+      r.style.setProperty('--tile-fs',   Math.round(p.tile*0.54)+'px');
+      r.style.setProperty('--slot-sz',   '50px');
+      r.style.setProperty('--slot-fs',   '28px');
+      r.style.setProperty('--slot-gap',  '5px');
+      window.LS_currentDevice=dev;
+    };
+    var saved=null; try{saved=localStorage.getItem('ls_device');}catch(e){}
+    var dev=(saved&&window.LS_PROFILES[saved])?saved:detect();
+    window.LS_applyProfile(dev);
+  })();
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,6 +52,20 @@
 
     /* ══ SCENE ══════════════════════════════════════ */
     #game-screen { overflow:hidden; padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+    /* ── Device badge ──────────────────────────────────── */
+    #device-badge {
+      position:absolute; top:13px; left:50%; transform:translateX(-50%);
+      z-index:200; background:rgba(255,255,255,0.88); backdrop-filter:blur(6px);
+      border-radius:50px; padding:5px 14px;
+      font-family:'Fredoka One',cursive; font-size:13px; color:#3A4A2A;
+      cursor:pointer; white-space:nowrap;
+      box-shadow:0 2px 8px rgba(0,0,0,0.12);
+      transition:transform .12s ease, opacity .3s ease;
+      -webkit-tap-highlight-color:transparent;
+    }
+    #device-badge:active { transform:translateX(-50%) scale(0.9); }
+    #device-badge.faded  { opacity:0.28; }
 
     #upper-field {
       flex:1; position:relative;
@@ -234,7 +266,7 @@
   </div>
   <div id="tiles-layer"></div>
 
-  <!-- Success overlay — full-screen so button is always centred & visible -->
+  <!-- Success overlay at game-screen level — always fully visible -->
   <div id="success-overlay">
     <div class="success-ring">
       <div class="success-emojis">🎉 ⭐ 🎉</div>
@@ -484,11 +516,12 @@ function getDistractors(word, count = 2) {
 function applySlotSize(wordLen) {
   const vw    = window.innerWidth;
   const vh    = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const p     = window.LS_PROFILES[window.LS_currentDevice] || window.LS_PROFILES.phone;
   const maxW  = vw * 0.86;
   const gap   = Math.max(3, Math.min(6, Math.floor(12 / wordLen)));
-  const slotSize = Math.max(30, Math.min(52, Math.floor((maxW - gap * (wordLen - 1)) / wordLen)));
+  const slotSize = Math.max(30, Math.min(p.slotMax, Math.floor((maxW - gap * (wordLen - 1)) / wordLen)));
   const slotFs   = Math.round(slotSize * 0.58);
-  const tileSize = Math.min(76, Math.round(slotSize * 1.45));
+  const tileSize = Math.min(p.tileMax, Math.round(slotSize * 1.45));
   const tileFs   = Math.round(tileSize * 0.54);
 
   const root = document.documentElement;
@@ -497,11 +530,9 @@ function applySlotSize(wordLen) {
   root.style.setProperty('--slot-gap', gap      + 'px');
   root.style.setProperty('--tile-sz',  tileSize + 'px');
   root.style.setProperty('--tile-fs',  tileFs   + 'px');
-
-  // Shared scene sizing
-  root.style.setProperty('--stream-h',  Math.round(Math.min(vh * 0.09, 100)) + 'px');
-  root.style.setProperty('--bank-h',    Math.round(Math.min(vh * 0.34, 340)) + 'px');
-  root.style.setProperty('--beetle-fs', Math.round(Math.min(tileSize * 0.74, 80)) + 'px');
+  root.style.setProperty('--stream-h', p.stream + 'px');
+  root.style.setProperty('--bank-h',   Math.round(Math.min(vh * p.bank, 380)) + 'px');
+  root.style.setProperty('--beetle-fs',p.beetle + 'px');
 
   return { tileSize, tileFs };
 }
@@ -524,9 +555,10 @@ function init() {
   // Pick 10 unique random words from the pool for this session
   sessionWords = shuffle([...WORD_POOL]).slice(0, 10);
   roundIdx = 0; tries = 0; stats = [];
-  applySlotSize(4);   // pre-warm scene CSS vars before first paint
+  applySlotSize(4);
   buildDecorations();
   buildStreamCreatures();
+  buildDeviceBadge();
   loadRound();
   showScreen('game-screen');
 }
@@ -853,8 +885,47 @@ function setTr(el,t){ el.style.transition=t; }
 function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 function goBackHome(){ if(window.androidBack){window.androidBack();return;} history.back(); }
 
+function onDeviceChanged() {
+  document.querySelectorAll('.letter-tile').forEach(t => t.remove());
+  if (typeof roundIdx !== 'undefined' && sessionWords[roundIdx]) {
+    const [word] = sessionWords[roundIdx];
+    applySlotSize(word.length);
+    spawnTiles(word, getDistractors(word, 2));
+  }
+}
+
+function buildDeviceBadge() {
+  const ORDER = ['phone','tablet','pc'];
+  const badge = document.createElement('div');
+  badge.id = 'device-badge';
+  badge.title = 'Tap to switch layout';
+  function refresh(){ badge.textContent = window.LS_PROFILES[window.LS_currentDevice].label; }
+  refresh();
+  let fadeTimer;
+  function startFade(){ fadeTimer = setTimeout(() => badge.classList.add('faded'), 4000); }
+  badge.addEventListener('click', () => {
+    const next = ORDER[(ORDER.indexOf(window.LS_currentDevice)+1) % ORDER.length];
+    window.LS_applyProfile(next);
+    try{ localStorage.setItem('ls_device', next); }catch(e){}
+    refresh(); onDeviceChanged();
+    clearTimeout(fadeTimer); badge.classList.remove('faded'); startFade();
+  });
+  badge.addEventListener('mouseenter', () => { clearTimeout(fadeTimer); badge.classList.remove('faded'); });
+  badge.addEventListener('mouseleave', startFade);
+  document.getElementById('game-screen').appendChild(badge);
+  startFade();
+}
+
 window.addEventListener('load', init);
-window.addEventListener('resize',()=>{ document.querySelectorAll('.letter-tile').forEach(t=>t.remove()); const [word]=sessionWords[roundIdx]; applySlotSize(word.length); spawnTiles(word, getDistractors(word,2)); });
+window.addEventListener('resize',()=>{
+  const pinned=(()=>{try{return localStorage.getItem('ls_device');}catch(e){return null;}})();
+  if(!pinned){
+    const w=window.innerWidth,h=window.innerHeight,s=Math.min(w,h),l=Math.max(w,h);
+    const dev=(s>=768&&l>=1024)?'pc':(s>=540)?'tablet':'phone';
+    if(dev!==window.LS_currentDevice) window.LS_applyProfile(dev);
+  }
+  onDeviceChanged();
+});
 </script>
 </body>
 </html>
